@@ -1,0 +1,62 @@
+unknown words :
+
+
+purpley
+lightish
+robin's
+magneta
+muave
+biege
+kahki
+tealish
+fluro
+blurple
+
+#decoder1 = AttnDecoderRNN(hidden_size, vocabulary.n_words, dropout_p=0.1).to(device)
+
+#trainIters(encoder1, attn_decoder1, 75000,plot_every=50,  print_every=50)
+
+#Results#
+# 3dims  : 2.7 Loss for decoder
+#  : 2.4 Loss for AttnDecoder
+# 256 dim : 0.001 Loss (basically mapping 362 dimensions to one dim ?)
+# 8 dim : 1.8 Loss
+# > bottle green
+# = bottle green
+# < sea green <EOS>
+#
+# > blue
+# = blue
+# < blue <EOS>
+#
+# > powder blue
+# = powder blue
+# < deep blue <EOS>
+#
+# > pastel blue
+# = pastel blue
+# < dull blue <EOS>
+#
+# > dusty teal
+# = dusty teal
+# < bright orange <EOS>
+#
+# > barbie pink
+# = barbie pink
+# < purplish pink <EOS>
+#
+# > rich purple
+# = rich purple
+# < greyish purple <EOS>
+#
+# > light grass green
+# = light grass green
+# < light olive green <EOS>
+#
+# > greenish grey
+# = greenish grey
+# < deep pink <EOS>
+#
+# > prussian blue
+# = prussian blue
+# < greyish blue <EOS>
