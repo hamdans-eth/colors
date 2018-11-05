@@ -1,5 +1,5 @@
 from __future__ import unicode_literals, print_function, division
-from get_data import make_list, make_pairs2
+from get_data import make_list, make_pairs2,make_pairs3
 
 import rnn
 import random
@@ -26,8 +26,9 @@ mu = 1 # for enforcing RGB distance
 
 #Getting data
 colors= make_list()
+#pairs,vocabulary = make_pairs2(colors)
 
-pairs,vocabulary = make_pairs2(colors)
+pairs,vocabulary,RGB = make_pairs3(colors,'train')
 
 #get weights
 s = vocab.GloVe('6B')
@@ -71,8 +72,8 @@ def train(input_tensor, target_tensor, encoder, decoder, encoder_optimizer, deco
         encoder_output, encoder_hidden = encoder(
             input_tensor[ei], encoder_hidden)
         encoder_outputs[ei] = encoder_output[0, 0]
-        print('encoder out size')
-        print(encoder_output.size())
+        #print('encoder out size')
+        #print(encoder_output.size())
     #start of seq
     decoder_input = torch.tensor([[SOS_token]], device=device)
 
@@ -109,7 +110,18 @@ def train(input_tensor, target_tensor, encoder, decoder, encoder_optimizer, deco
             loss += criterion(decoder_output, target_tensor[di])
             if decoder_input.item() == EOS_token:
                 break
+    # adding RGB distance
+    input_color_string = ''
+    for i in range(target_length) :
+        if input_tensor[i] != 1 :
+            input_color_string += vocabulary.index2word[input_tensor[i].item()] + ' '
+    input_color_string = input_color_string[:-1]
+    # the RGB values have to be in [-0.5 , 0.5] (-0.5) !
+    target_rgb = [RGB[input_color_string][0][0] - 0.5, RGB[input_color_string][1][0] - 0.5, RGB[input_color_string][2][0] - 0.5]
+    #here i simply take the first RGB value
+    distance = mu * np.linalg.norm( np.subtract(encoder_output.data[0][0].numpy() ,target_rgb),2)
 
+    loss += distance
     loss.backward()
 
     encoder_optimizer.step()

@@ -116,10 +116,10 @@ def make_pairs3(colors, mode) :
     print("Counted words:")
     print(vocabulary.n_words)
     pairs = list(zip(colors,colors))
+    RGB = dict(zip(colors, RGB))
     print(RGB)
     return pairs, vocabulary, RGB
-mode = 'test'
-make_pairs3(make_list(),mode)
+
 
 
 # #get  lists of full paths to data files
