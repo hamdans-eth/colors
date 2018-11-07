@@ -13,8 +13,8 @@ class Vocabulary:
         self.name = name
         self.word2index = {}
         self.word2count = {}
-        self.index2word = {0: "SOS", 1: "EOS"}
-        self.n_words = 2  # Count SOS and EOS
+        self.index2word = {0: "SOS", 1: "EOS",2: "PAD"}
+        self.n_words = 3  # Count SOS and EOS
 
     def addDescription(self, description):
         for word in description.split(' '):
@@ -41,7 +41,7 @@ def make_list( ) :
     return names
 
 
-def make_pairs(colors) :
+def make_pairs3(colors) :
     vocabulary = Vocabulary('eng')
     print("Read %s descriptions" % len(colors))
     for description in colors :
@@ -85,11 +85,13 @@ def hsv_to_rgb(h,s,v) :
         r_.append(r + m[i])
         g_.append(g + m[i])
         b_.append(b + m[i])
-
-    return r_,g_,b_
+        rgb = []
+    for i in range(len(r_)) :
+        rgb.append( [ r_[i],g_[i],b_[i] ])
+    return rgb
 
 #training only
-def make_pairs3(colors, mode) :
+def make_pairs(colors, mode) :
     vocabulary = Vocabulary('eng')
     print("Read %s descriptions" % len(colors))
     RGB = []
@@ -117,7 +119,7 @@ def make_pairs3(colors, mode) :
     print(vocabulary.n_words)
     pairs = list(zip(colors,colors))
     RGB = dict(zip(colors, RGB))
-    print(RGB)
+    #print(RGB)
     return pairs, vocabulary, RGB
 
 
