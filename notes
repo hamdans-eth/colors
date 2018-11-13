@@ -1,19 +1,7 @@
-jumping a lot maybe use different mu
-
-8m 46s (- 37m 33s) (14200 18%) 1.2745
-8m 47s (- 37m 29s) (14250 19%) 1.2633
-8m 49s (- 37m 26s) (14300 19%) 1.3526
-8m 50s (- 37m 23s) (14350 19%) 1.4540
-8m 52s (- 37m 20s) (14400 19%) 1.4115
-8m 54s (- 37m 19s) (14450 19%) 1.2552
-8m 56s (- 37m 17s) (14500 19%) 1.1450
-8m 58s (- 37m 15s) (14550 19%) 1.1507
-8m 59s (- 37m 13s) (14600 19%) 1.2380
-9m 1s (- 37m 11s) (14650 19%) 1.3112
-9m 3s (- 37m 8s) (14700 19%) 1.3001
-9m 4s (- 37m 5s) (14750 19%) 1.3707
-9m 6s (- 37m 2s) (14800 19%) 1.1909
-
+export PATH="$HOME/.pyenv/bin:$PATH"
+eval "$(pyenv init -)"
+eval "$(pyenv virtualenv-init -)"
+exec $SHELL
 
 np.set_printoptions(edgeitems=3,infstr='inf', linewidth=75, nanstr='nan', precision=8, suppress=False, threshold=1000, formatter=None)
 

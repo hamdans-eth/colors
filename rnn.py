@@ -53,7 +53,11 @@ class DecoderRNN(nn.Module):
         self.hidden_size = hidden_size
         self.embedding_dimension = embeddings.shape[1]
         self.output_size = output_size #self.embedding_dimension
-        self.RGB_to_embedding = nn.Linear(self.hidden_size,self.embedding_dimension)
+
+        #TODO a list of fully connected
+
+        self.MLP =  [[nn.Linear(self.hidden_size,self.embedding_dimension)] +
+                                  [nn.Linear(self.embedding_dimension,self.embedding_dimension) for _ in range(NUM_LAYERS)]]
 
         self.embedding = nn.Embedding(output_size, self.embedding_dimension,padding_idx=pad_idx).from_pretrained(embeddings,freeze=False)
 
@@ -67,9 +71,16 @@ class DecoderRNN(nn.Module):
         #output is 1 x 64 x 300
         output = F.relu(output)
 
-
+        RGB_to_EMB = (self.MLP[0][0])
+        #print(self.MLP)
+        hidden = RGB_to_EMB(hidden)
+        #torch.squeeze
+        hidden_layers = torch.stack([torch.squeeze(self.MLP[0][i+1](hidden)) for i in range(NUM_LAYERS)])
+        #print(hidden_layers[0].shape)
+        # NUM_LAYERS * batch_size * embedding_dimensions
+        #print(hidden.size())
         #output = torch.nn.utils.rnn.pack_padded_sequence(output, batch_size)
-        output, hidden = self.gru(output, hidden)
+        output, hidden = self.gru(output, hidden_layers) #self.gru(output, hidden)
         #output, _ = torch.nn.utils.rnn.pad_packed_sequence(output) #, batch_first=True
 
         output = self.softmax(self.out(output[0]))

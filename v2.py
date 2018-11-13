@@ -70,7 +70,7 @@ def RGB_dist(target_lengths,input_tensors,encoder_outputs) :
             input_color_string = ''
             target_length = target_lengths[i]
             input_tensor = [input_tensors[j][i] for j in range(target_length)] #dont count pads !
-            encoder_output = [encoder_outputs[j][i] for j in range(target_length)]
+            encoder_output = encoder_outputs[target_length-1][i] #last rgb value
             #print(encoder_output)
             for i in range(target_length) :
                 if input_tensor[i] not in  (EOS_token , PAD_token) :
@@ -83,8 +83,7 @@ def RGB_dist(target_lengths,input_tensors,encoder_outputs) :
             # the RGB values have to be in [-0.5 , 0.5] (-0.5) !
             #TODO ignore pads ??
 
-            distance =  sum( [np.linalg.norm( np.subtract(encoder_output[i].data+0.5 ,target_rgb),2) for i in
-                              range(target_length)] )
+            distance =  np.linalg.norm( np.subtract(encoder_output.data+0.5 ,target_rgb),2)
             sum_distances += mu * distance
 
         return sum_distances / batch_size
@@ -107,11 +106,22 @@ def train(input_batches, input_lengths, target_batches, target_lengths, encoder,
     all_decoder_outputs = torch.zeros(max_target_length, batch_size, decoder.output_size).to(device)
 
     # Move new Variables to CUDA
-
-
+    decoder_input.to(device)
+    encoder_outputs.to(device)
+    #print(target_lengths)
+    #print(encoder_outputs) #take last encoder outputs (depends on size)
     # Run through decoder one time step at a time
+    last_RGB_values = []
+    last_RGB_values_indices = np.array(target_lengths) - 1
+    for i in range(len(target_lengths)):
+        last_RGB_values.append(encoder_outputs[last_RGB_values_indices[i], i, :])
+    last_RGB_values = torch.stack(last_RGB_values) #our hidden size
+    #TODO adding a dimension
+    last_RGB_values = last_RGB_values.unsqueeze(0)
+
     for t in range(max_target_length):
-        decoder_output, decoder_hidden= decoder(decoder_input, decoder_hidden) #encoder outputs for attn
+
+        decoder_output, decoder_hidden = decoder(decoder_input, last_RGB_values) #encoder outputs for attn
         #print(decoder_output.size())
         all_decoder_outputs[t] = decoder_output
         decoder_input = target_batches[t]  # Next input is current target
