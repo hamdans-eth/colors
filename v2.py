@@ -23,11 +23,11 @@ EOS_token = 1
 PAD_token = 2
 MAX_LENGTH = 4
 epochs = 10000
-batch_size = 64
+batch_size = 2
 USE_ATTN = False
 hidden_size = 3
 teacher_forcing_ratio = 0 #no need
-mu = 1 # for enforcing RGB distance
+mu = 0.1 # for enforcing RGB distance
 clip = 50.0
 
 
@@ -115,10 +115,10 @@ def train(input_batches, input_lengths, target_batches, target_lengths, encoder,
     last_RGB_values_indices = np.array(target_lengths) - 1
     for i in range(len(target_lengths)):
         last_RGB_values.append(encoder_outputs[last_RGB_values_indices[i], i, :])
-    last_RGB_values = torch.stack(last_RGB_values) #our hidden size
+    last_RGB_values = torch.stack(last_RGB_values).to(device) #our hidden size
     #TODO adding a dimension
-    last_RGB_values = last_RGB_values.unsqueeze(0)
-
+    last_RGB_values = (last_RGB_values.unsqueeze(0)).to(device)
+    #print(last_RGB_values[0])
     for t in range(max_target_length):
 
         decoder_output, decoder_hidden = decoder(decoder_input, last_RGB_values) #encoder outputs for attn
@@ -391,3 +391,8 @@ trainIters(encoder1, decoder1, epochs,plot_every=50,  print_every=50)
 if USE_ATTN:
     evaluateRandomly(encoder1, decoder1)
 
+path_encoder = '/scratch/hamdans/project/saved_encoder'
+torch.save(encoder1, path_encoder)
+
+path_decoder = '/scratch/hamdans/project/saved_decoder'
+torch.save(decoder1, path_decoder)

@@ -4,8 +4,8 @@ from torch import optim
 import torch.nn.functional as F
 
 MAX_LENGTH = 4
-NUM_LAYERS = 4
-batch_size = 64
+NUM_LAYERS = 2
+batch_size = 2
 pad_idx = 2 #idx of the padding
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -55,9 +55,11 @@ class DecoderRNN(nn.Module):
         self.output_size = output_size #self.embedding_dimension
 
         #TODO a list of fully connected
-
-        self.MLP =  [[nn.Linear(self.hidden_size,self.embedding_dimension)] +
-                                  [nn.Linear(self.embedding_dimension,self.embedding_dimension) for _ in range(NUM_LAYERS)]]
+        self.MLP = nn.ModuleList()
+        self.MLP += [nn.Linear(self.hidden_size,self.embedding_dimension)]
+        self.MLP += [nn.Linear(self.embedding_dimension,self.embedding_dimension) for _ in range(NUM_LAYERS)]
+        #self.MLP =  [[nn.Linear(self.hidden_size,self.embedding_dimension)] +
+        #                          [nn.Linear(self.embedding_dimension,self.embedding_dimension) for _ in range(NUM_LAYERS)]]
 
         self.embedding = nn.Embedding(output_size, self.embedding_dimension,padding_idx=pad_idx).from_pretrained(embeddings,freeze=False)
 
@@ -70,13 +72,13 @@ class DecoderRNN(nn.Module):
         output = self.embedding(input).view(1, batch_size, self.embedding_dimension)
         #output is 1 x 64 x 300
         output = F.relu(output)
-
-        RGB_to_EMB = (self.MLP[0][0])
-        #print(self.MLP)
+        
+        RGB_to_EMB = (self.MLP[0])
+        #print(RGB_to_EMB.is_cuda)
         hidden = RGB_to_EMB(hidden)
         #torch.squeeze
-        hidden_layers = torch.stack([torch.squeeze(self.MLP[0][i+1](hidden)) for i in range(NUM_LAYERS)])
-        #print(hidden_layers[0].shape)
+        hidden_layers = torch.stack([torch.squeeze(self.MLP[i+1](hidden)) for i in range(NUM_LAYERS)])
+        hidden_laxers = hidden_layers.to(device) #print(hidden_layers[0].shape)
         # NUM_LAYERS * batch_size * embedding_dimensions
         #print(hidden.size())
         #output = torch.nn.utils.rnn.pack_padded_sequence(output, batch_size)
