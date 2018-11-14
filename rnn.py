@@ -5,7 +5,7 @@ import torch.nn.functional as F
 
 MAX_LENGTH = 4
 NUM_LAYERS = 2
-batch_size = 2
+batch_size = 4
 pad_idx = 2 #idx of the padding
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -40,6 +40,7 @@ class EncoderRNN(nn.Module):
         outputs = self.embeedding_to_RGB(outputs)
         #outputs = outputs[:, :, :self.hidden_size] + outputs[:, :, self.hidden_size:]  # Sum bidirectional outputs
         #print(outputs.shape)
+        outputs = F.sigmoid(outputs)
         return outputs, hidden
 
     def initHidden(self):
@@ -53,6 +54,9 @@ class DecoderRNN(nn.Module):
         self.hidden_size = hidden_size
         self.embedding_dimension = embeddings.shape[1]
         self.output_size = output_size #self.embedding_dimension
+
+
+        self.rgb_to_embedding = nn.Linear(self.hidden_size,self.embedding_dimension)
 
         #TODO a list of fully connected
         self.MLP = nn.ModuleList()
@@ -73,12 +77,14 @@ class DecoderRNN(nn.Module):
         #output is 1 x 64 x 300
         output = F.relu(output)
         
-        RGB_to_EMB = (self.MLP[0])
+
         #print(RGB_to_EMB.is_cuda)
-        hidden = RGB_to_EMB(hidden)
-        #torch.squeeze
-        hidden_layers = torch.stack([torch.squeeze(self.MLP[i+1](hidden)) for i in range(NUM_LAYERS)])
-        hidden_laxers = hidden_layers.to(device) #print(hidden_layers[0].shape)
+        hidden = self.rgb_to_embedding(hidden)
+        #torch.squeeze clone?
+
+        hidden_layers = torch.stack([hidden.clone() for i in range(NUM_LAYERS)]).to(device)
+        hidden_layers = torch.squeeze(hidden_layers)
+        #hidden_laxers = hidden_layers.to(device) #print(hidden_layers[0].shape)
         # NUM_LAYERS * batch_size * embedding_dimensions
         #print(hidden.size())
         #output = torch.nn.utils.rnn.pack_padded_sequence(output, batch_size)
@@ -86,6 +92,7 @@ class DecoderRNN(nn.Module):
         #output, _ = torch.nn.utils.rnn.pad_packed_sequence(output) #, batch_first=True
 
         output = self.softmax(self.out(output[0]))
+
         return output, hidden
 
     def initHidden(self):

@@ -13,7 +13,6 @@ import math
 from utils import masked_cross_entropy
 
 
-random.seed(1)
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 #TODO GPU / CPU numpy ?
 
@@ -23,9 +22,9 @@ EOS_token = 1
 PAD_token = 2
 MAX_LENGTH = 4
 epochs = 10000
-batch_size = 2
+batch_size = 4
 USE_ATTN = False
-hidden_size = 3
+rgb_number_of_dim = 3
 teacher_forcing_ratio = 0 #no need
 mu = 0.1 # for enforcing RGB distance
 clip = 50.0
@@ -82,8 +81,9 @@ def RGB_dist(target_lengths,input_tensors,encoder_outputs) :
             target_rgb = np.array(RGB[input_color_string][idx])
             # the RGB values have to be in [-0.5 , 0.5] (-0.5) !
             #TODO ignore pads ??
-
-            distance =  np.linalg.norm( np.subtract(encoder_output.data+0.5 ,target_rgb),2)
+            #print(encoder_output)
+            #print(target_rgb)
+            distance =  np.linalg.norm( np.subtract(np.square(encoder_output.data),np.square(target_rgb)),2)
             sum_distances += mu * distance
 
         return sum_distances / batch_size
@@ -116,7 +116,7 @@ def train(input_batches, input_lengths, target_batches, target_lengths, encoder,
     for i in range(len(target_lengths)):
         last_RGB_values.append(encoder_outputs[last_RGB_values_indices[i], i, :])
     last_RGB_values = torch.stack(last_RGB_values).to(device) #our hidden size
-    #TODO adding a dimension
+    #TODO hidden state is always the last RGB value ?
     last_RGB_values = (last_RGB_values.unsqueeze(0)).to(device)
     #print(last_RGB_values[0])
     for t in range(max_target_length):
@@ -124,7 +124,9 @@ def train(input_batches, input_lengths, target_batches, target_lengths, encoder,
         decoder_output, decoder_hidden = decoder(decoder_input, last_RGB_values) #encoder outputs for attn
         #print(decoder_output.size())
         all_decoder_outputs[t] = decoder_output
-        decoder_input = target_batches[t]  # Next input is current target
+        topv, topi = decoder_output.topk(1)  # maximum prediction of index
+        decoder_input = topi.squeeze().detach()  # detach from history as input
+        #decoder_input = target_batches[t]  # Next input is target = teacher forcing (could be prediction)
 
     # Loss calculation and backpropagation
     loss = masked_cross_entropy(
@@ -379,11 +381,11 @@ def evaluateRandomly(encoder, decoder, n=10):
 
 
 
-encoder1 = rnn.EncoderRNN(vocabulary.n_words, hidden_size,embeddings).to(device)
+encoder1 = rnn.EncoderRNN(vocabulary.n_words, rgb_number_of_dim,embeddings).to(device)
 if(not USE_ATTN) :
-    decoder1 = rnn.DecoderRNN(hidden_size,embeddings,vocabulary.n_words).to(device)
+    decoder1 = rnn.DecoderRNN(rgb_number_of_dim,embeddings,vocabulary.n_words).to(device)
 else :
-    decoder1 = rnn.AttnDecoderRNN(hidden_size, vocabulary.n_words, embeddings, dropout_p=0.1).to(device)
+    decoder1 = rnn.AttnDecoderRNN(rgb_number_of_dim, vocabulary.n_words, embeddings, dropout_p=0.1).to(device)
 
 trainIters(encoder1, decoder1, epochs,plot_every=50,  print_every=50)
 
@@ -391,8 +393,21 @@ trainIters(encoder1, decoder1, epochs,plot_every=50,  print_every=50)
 if USE_ATTN:
     evaluateRandomly(encoder1, decoder1)
 
-path_encoder = '/scratch/hamdans/project/saved_encoder'
-torch.save(encoder1, path_encoder)
 
-path_decoder = '/scratch/hamdans/project/saved_decoder'
-torch.save(decoder1, path_decoder)
+#path_encoder = '/scratch/hamdans/project/enc'
+#torch.save(encoder1, path_encoder)
+
+#path_decoder = '/scratch/hamdans/project/dec'
+#torch.save(decoder1, path_decoder)
+
+
+import os
+dirpath = os.getcwd()
+encoder_path = dirpath + '/enc'
+foo = 'foo'
+
+with open(encoder_path,'w') as f:
+    f.write(foo)
+
+
+
