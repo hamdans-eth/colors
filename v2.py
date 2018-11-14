@@ -33,7 +33,7 @@ clip = 50.0
 #Getting data (list of color descriptions)
 colors= make_list()
 #training pairs, vocabulary, dictionnary with a list of RGB values associated to every color
-pairs,vocabulary,RGB = make_pairs(colors,'test')
+pairs,vocabulary,RGB = make_pairs(colors,'train')
 
 #set batches
 
@@ -404,10 +404,7 @@ if USE_ATTN:
 import os
 dirpath = os.getcwd()
 encoder_path = dirpath + '/enc'
-foo = 'foo'
-
-with open(encoder_path,'w') as f:
-    f.write(foo)
-
-
+decoder_path = dirpath + '/dec'
+torch.save(encoder1, encoder_path)
+torch.save(decoder1, decoder_path)
 

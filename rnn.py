@@ -21,15 +21,7 @@ class EncoderRNN(nn.Module):
         self.gru = nn.GRU(self.embedding_dimension, self.embedding_dimension,num_layers = NUM_LAYERS)
         self.embeedding_to_RGB = nn.Linear(self.embedding_dimension,hidden_size) #could be larger
 
-    # def forward(self, input, hidden):
-    #
-    #     embedded = self.embedding(input).view(1, batch_size, self.embedding_dimension)
-    #     output = embedded
-    #     output = torch.nn.utils.rnn.pack_padded_sequence(output, batch_size) #size always MAX LENGTH always since padded
-    #     output, hidden = self.gru(output, hidden)
-    #     output, _ = torch.nn.utils.rnn.pad_packed_sequence(output)
-    #     output = self.embeedding_to_RGB(output)
-    #     return output, hidden
+
     def forward(self, input_seqs, input_lengths, hidden=None):
 
         embedded = self.embedding(input_seqs)
@@ -46,8 +38,7 @@ class EncoderRNN(nn.Module):
     def initHidden(self):
         return torch.zeros(self.embedding_dimension, batch_size, self.embedding_dimension, device=device) #return torch.zeros(NUM_LAYERS, 1, self.hidden_size, device=device)
 
-#RGB SPACE = 3 = HIDDEN SIZE
-#RGB VS HIDDEN
+
 class DecoderRNN(nn.Module):
     def __init__(self, hidden_size, embeddings, output_size):
         super(DecoderRNN, self).__init__()
@@ -57,13 +48,6 @@ class DecoderRNN(nn.Module):
 
 
         self.rgb_to_embedding = nn.Linear(self.hidden_size,self.embedding_dimension)
-
-        #TODO a list of fully connected
-        self.MLP = nn.ModuleList()
-        self.MLP += [nn.Linear(self.hidden_size,self.embedding_dimension)]
-        self.MLP += [nn.Linear(self.embedding_dimension,self.embedding_dimension) for _ in range(NUM_LAYERS)]
-        #self.MLP =  [[nn.Linear(self.hidden_size,self.embedding_dimension)] +
-        #                          [nn.Linear(self.embedding_dimension,self.embedding_dimension) for _ in range(NUM_LAYERS)]]
 
         self.embedding = nn.Embedding(output_size, self.embedding_dimension,padding_idx=pad_idx).from_pretrained(embeddings,freeze=False)
 
