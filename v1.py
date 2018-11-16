@@ -10,7 +10,6 @@ import torchtext.vocab as vocab
 import numpy as np
 import time
 import math
-from utils import masked_cross_entropy
 
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -20,11 +19,11 @@ SOS_token = 0
 EOS_token = 1
 PAD_token = 2
 MAX_LENGTH = 4
-epochs = 10000
+epochs = 50000
 USE_ATTN = False
 rgb_dim_n = 3
 embedding_dim_n = 300
-mu = 0.1
+mu = 1
 #clip = 50.0
 
 
@@ -57,18 +56,18 @@ embeddings = torch.from_numpy(embeddings).float()
 
 def tensor_to_string (input_tensor):
     input_color_string = ''
-    for i in range(MAX_LENGTH):
+    for i in range(tensor_length(input_tensor)):
         word = vocabulary.index2word[input_tensor[i].item()]
         if word != 'PAD' and word !='EOS':
             input_color_string += word + ' '
+
     return  input_color_string[:-1]
 
 def tensor_length(input_tensor) :
-    count = 0
-    for element in input_tensor :
-        if element.item() != PAD_token : count += 1
-
-    return count - 1
+    #count = 0
+    #for element in input_tensor :
+    #    count += 1
+    return len(input_tensor)
 
 def RGB_dist(input_tensor,encoder_output) :
         input_color_string = tensor_to_string(input_tensor)
@@ -76,7 +75,7 @@ def RGB_dist(input_tensor,encoder_output) :
         #random RGB value
         idx = random.randrange(len(RGB[input_color_string]))
         target_rgb = np.array(RGB[input_color_string][idx])
-        target_rgb = torch.Tensor(target_rgb)
+        target_rgb = torch.Tensor(target_rgb).to(device)
         distance = target_rgb.sub(encoder_output)
         distance = torch.sum(torch.norm(distance, p=2))
         return mu * distance
@@ -113,6 +112,7 @@ def train(input_tensor, target_tensor, encoder, decoder,linear, encoder_optimize
     #target_length = target_tensor.size(0)
     #print(target_length)
     target_length = tensor_length(input_tensor)
+
     loss = 0
 
     #First we iterate through the words feeding tokens & last hidden state
@@ -123,7 +123,6 @@ def train(input_tensor, target_tensor, encoder, decoder,linear, encoder_optimize
     #Get the last RGB value
     current_RGB = encoder_output
 
-    #Compute distance to target RGB
 
 
     #RGB to hidden space of decoder layer
@@ -132,26 +131,25 @@ def train(input_tensor, target_tensor, encoder, decoder,linear, encoder_optimize
     #start of seq
     decoder_input = torch.tensor([[SOS_token]], device=device)
 
-
     # fill the vector of predicted output
     prediction = []
     for di in range(target_length):
         decoder_output, decoder_hidden = decoder(decoder_input, decoder_hidden)
         topv, topi = decoder_output.topk(1)
         decoder_input = topi.squeeze().detach()  # detach from history as input
-        print(topi)
-        print(di)
+
         loss += criterion(decoder_output, target_tensor[di])
 
         prediction = [prediction + [topi]]
         if decoder_input.item() == EOS_token:
             break
-    #loss = loss.item() / float(target_length)
+    loss = loss.item() / float(target_length - 1)
+    #print(loss)
 
     #
     distance = RGB_dist(input_tensor,current_RGB)
-
-    #loss += distance
+    #print(distance)
+    loss += distance
 
     loss.backward()
 
@@ -159,7 +157,7 @@ def train(input_tensor, target_tensor, encoder, decoder,linear, encoder_optimize
     decoder_optimizer.step()
     linear_optimizer.step()
 
-    return loss / float(target_length)
+    return loss
 
 
 ## utility functions
@@ -168,10 +166,11 @@ def indexesFromDescription(vocabulary, description):
     return [vocabulary.word2index[word] for word in description.split(' ')]
 
 def tensorFromDescription(vocabulary, description):
-    indexes = indexesFromDescription(vocabulary, description)
+    indexes = [PAD_token] + indexesFromDescription(vocabulary, description)
+    # [PAD_token for _ in range(empty_spaces)] + indexes
     #print(indexes)
-    empty_spaces = MAX_LENGTH - len(indexes) - 1
-    if empty_spaces > 0 : indexes = [PAD_token for _ in range(empty_spaces)] + indexes
+    #empty_spaces = MAX_LENGTH - len(indexes) #the EOS
+    #if empty_spaces > 0 : indexes = [PAD_token] + indexes #[PAD_token for _ in range(empty_spaces)] + indexes
     # one pad ?
     indexes.append(EOS_token)
 
@@ -207,9 +206,9 @@ def trainIters(encoder, decoder,linear, n_iters, print_every=1000, plot_every=10
     print_loss_total = 0  # Reset every print_every
     plot_loss_total = 0  # Reset every plot_every
 
-    encoder_optimizer = optim.SGD(encoder.parameters(), lr=learning_rate)
-    decoder_optimizer = optim.SGD(decoder.parameters(), lr=learning_rate)
-    linear_optimizer = optim.SGD(linear.parameters(), lr=learning_rate)
+    encoder_optimizer = optim.Adam(encoder.parameters(), lr=learning_rate)
+    decoder_optimizer = optim.Adam(decoder.parameters(), lr=learning_rate)
+    linear_optimizer = optim.Adam(linear.parameters(), lr=learning_rate)
 
     training_pairs = [tensorsFromPair(random.choice(pairs))
                       for i in range(n_iters)]
