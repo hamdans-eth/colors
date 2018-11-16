@@ -19,7 +19,7 @@ class EncoderRNN(nn.Module):
 
         self.embedding = nn.Embedding(input_size, self.embedding_dimension,padding_idx=pad_idx).from_pretrained(embeddings,freeze=False)
         self.gru = nn.GRU(self.embedding_dimension, self.embedding_dimension,num_layers = NUM_LAYERS)
-        self.embeedding_to_RGB = nn.Linear(self.embedding_dimension,hidden_size) #could be larger
+        self.embedding_to_RGB = nn.Linear(self.embedding_dimension,hidden_size) #could be larger
 
 
     def forward(self, input_seqs, input_lengths, hidden=None):
@@ -29,7 +29,7 @@ class EncoderRNN(nn.Module):
         packed = torch.nn.utils.rnn.pack_padded_sequence(embedded, input_lengths)
         outputs, hidden = self.gru(packed, hidden)
         outputs, output_lengths = torch.nn.utils.rnn.pad_packed_sequence(outputs)  # unpack (back to padded)
-        outputs = self.embeedding_to_RGB(outputs)
+        outputs = self.embedding_to_RGB(outputs)
         #outputs = outputs[:, :, :self.hidden_size] + outputs[:, :, self.hidden_size:]  # Sum bidirectional outputs
         #print(outputs.shape)
         outputs = F.sigmoid(outputs)
@@ -56,9 +56,9 @@ class DecoderRNN(nn.Module):
         self.softmax = nn.LogSoftmax(dim=1)
 
     def forward(self, input, hidden):
-
+        print(self.embedding(input))
         output = self.embedding(input).view(1, batch_size, self.embedding_dimension)
-        #output is 1 x 64 x 300
+        #output is 1 x 64 x 30022
         output = F.relu(output)
         
 
@@ -71,9 +71,8 @@ class DecoderRNN(nn.Module):
         #hidden_laxers = hidden_layers.to(device) #print(hidden_layers[0].shape)
         # NUM_LAYERS * batch_size * embedding_dimensions
         #print(hidden.size())
-        #output = torch.nn.utils.rnn.pack_padded_sequence(output, batch_size)
-        output, hidden = self.gru(output, hidden_layers) #self.gru(output, hidden)
-        #output, _ = torch.nn.utils.rnn.pad_packed_sequence(output) #, batch_first=True
+
+        output, hidden = self.gru(output, hidden_layers)
 
         output = self.softmax(self.out(output[0]))
 

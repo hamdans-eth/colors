@@ -45,7 +45,7 @@ embeddings_dim = s.dim #300
 
 
 #random uniform(Min,Max) initialization of unknown words, else init. with gloVe embeddings
-
+# what about an 'UNKOWN' token ?
 r1 = torch.max(s.vectors)
 r2 = torch.min(s.vectors)
 embeddings  = np.zeros([ vocabulary.n_words, embeddings_dim ])
@@ -97,6 +97,7 @@ def train(input_batches, input_lengths, target_batches, target_lengths, encoder,
 
     # Run words through encoder
     encoder_outputs, encoder_hidden = encoder(input_batches, input_lengths)
+
 
     # Prepare input and output variables
     decoder_input = torch.LongTensor([SOS_token] * batch_size).to(device)

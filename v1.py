@@ -23,7 +23,7 @@ epochs = 50000
 USE_ATTN = False
 rgb_dim_n = 3
 embedding_dim_n = 300
-mu = 1
+mu = 5
 #clip = 50.0
 
 
@@ -67,7 +67,8 @@ def tensor_length(input_tensor) :
     #count = 0
     #for element in input_tensor :
     #    count += 1
-    return len(input_tensor)
+    #print(input_tensor.shape[0])
+    return input_tensor.shape[0]
 
 def RGB_dist(input_tensor,encoder_output) :
         input_color_string = tensor_to_string(input_tensor)
@@ -137,27 +138,29 @@ def train(input_tensor, target_tensor, encoder, decoder,linear, encoder_optimize
         decoder_output, decoder_hidden = decoder(decoder_input, decoder_hidden)
         topv, topi = decoder_output.topk(1)
         decoder_input = topi.squeeze().detach()  # detach from history as input
-
+        #print(topi,target_tensor[di])
+        #print(criterion(decoder_output,target_tensor[di]))
         loss += criterion(decoder_output, target_tensor[di])
-
+        #print(criterion(decoder_output, target_tensor[di]))
         prediction = [prediction + [topi]]
-        if decoder_input.item() == EOS_token:
-            break
-    loss = loss.item() / float(target_length - 1)
+        #if decoder_input.item() == EOS_token:
+        #    break
+    #print(target_length)
+    #loss = loss.item()
     #print(loss)
 
-    #
+
     distance = RGB_dist(input_tensor,current_RGB)
     #print(distance)
-    loss += distance
+    loss = loss / (target_length - 1) + distance
 
     loss.backward()
 
     encoder_optimizer.step()
     decoder_optimizer.step()
     linear_optimizer.step()
-
-    return loss
+    #print(loss.item()) #/ float(target_length) )
+    return loss.item() #/ float(target_length)  #+ distance
 
 
 ## utility functions
@@ -206,9 +209,9 @@ def trainIters(encoder, decoder,linear, n_iters, print_every=1000, plot_every=10
     print_loss_total = 0  # Reset every print_every
     plot_loss_total = 0  # Reset every plot_every
 
-    encoder_optimizer = optim.Adam(encoder.parameters(), lr=learning_rate)
-    decoder_optimizer = optim.Adam(decoder.parameters(), lr=learning_rate)
-    linear_optimizer = optim.Adam(linear.parameters(), lr=learning_rate)
+    encoder_optimizer = optim.SGD(encoder.parameters(), lr=learning_rate)
+    decoder_optimizer = optim.SGD(decoder.parameters(), lr=learning_rate)
+    linear_optimizer = optim.SGD(linear.parameters(), lr=learning_rate)
 
     training_pairs = [tensorsFromPair(random.choice(pairs))
                       for i in range(n_iters)]
@@ -297,7 +300,7 @@ encoder = rnn1.EncoderRNN(vocabulary.n_words, rgb_dim_n,embeddings).to(device)
 decoder = rnn1.DecoderRNN(embedding_dim_n,embeddings,vocabulary.n_words).to(device)
 linear = rnn1.RGB_to_Hidden(rgb_dim_n, embedding_dim_n).to(device)
 
-trainIters(encoder, decoder,linear, 75000,plot_every=500,  print_every=50)
+trainIters(encoder, decoder,linear, 75000,plot_every=500,  print_every=500)
 
 
 import os
