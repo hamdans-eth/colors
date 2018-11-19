@@ -19,7 +19,7 @@ SOS_token = 0
 EOS_token = 1
 PAD_token = 2
 MAX_LENGTH = 4
-epochs = 75000
+epochs = 150000
 USE_ATTN = False
 rgb_dim_n = 3
 embedding_dim_n = 300
@@ -121,7 +121,7 @@ def train(input_tensor, target_tensor, encoder, decoder,linear, encoder_optimize
     #target_length = target_tensor.size(0)
     #print(target_length)
     target_length = tensor_length(input_tensor)
-
+    #print(input_tensor)
     loss = 0
 
     #First we iterate through the words feeding tokens & last hidden state
@@ -136,6 +136,9 @@ def train(input_tensor, target_tensor, encoder, decoder,linear, encoder_optimize
 
     #RGB to hidden space of decoder layer
     RGB_hidden = linear(current_RGB)
+    #print(RGB_hidden.shape)
+    #RGB_hidden = torch.stack([RGB_hidden for _ in range(encoder.num_layers)])
+    #print(RGB_hidden.shape)
     decoder_hidden = RGB_hidden.clone()
 
     #start of seq
@@ -149,23 +152,20 @@ def train(input_tensor, target_tensor, encoder, decoder,linear, encoder_optimize
         decoder_output, decoder_hidden = decoder(decoder_input, decoder_hidden)
         topv, topi = decoder_output.topk(1)
         decoder_input = topi.squeeze().detach()  # detach from history as input
-        #print(topi,target_tensor[di])
-        #print(criterion(decoder_output,target_tensor[di]))
         loss += criterion(decoder_output, target_tensor[di])
-        #print(criterion(decoder_output, target_tensor[di]))
         prediction = [prediction + [topi]]
         decoder_hidden = decoder_hidden + RGB_hidden # to get more info from RGB
         #if decoder_input.item() == EOS_token:
         #    break
     #print(target_length)
-    #loss = loss.item()
-    #print(loss)
+    uloss = loss.item()
+    #print(uloss)
 
 
     distance = RGB_dist(input_tensor,current_RGB)
     #print(distance)
     loss = loss / (target_length - 1) + distance
-
+    #print(loss.item())
     loss.backward()
 
     encoder_optimizer.step()
@@ -254,8 +254,7 @@ def trainIters(encoder, decoder,linear, n_iters, print_every=1000, plot_every=10
             plot_loss_avg = plot_loss_total / plot_every
             plot_losses.append(plot_loss_avg)
             plot_loss_total = 0
-        #TODO : Plots ?
-        #showPlot(plot_losses)
+        showPlot(plot_losses)
 
 
 #from tutorial

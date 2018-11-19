@@ -36,11 +36,22 @@ class Vocabulary:
 def make_list( ) :
     training = munroecorpus.get_training_handles()
     names = list(training[0].keys())
+    #names
     #deal with -
 
     return names
 
+def make_list_test( ) :
+    training = munroecorpus.get_training_handles()
+    names = list(training[0].keys())
+    names_ = []
+    for name in names :
+        if len(name.split(' ')) == 2:
+            names_ = names_ + [name]
+    #print(names_)
+    return names_
 
+#make_list_test()
 def make_pairs3(colors) :
     vocabulary = Vocabulary('eng')
     print("Read %s descriptions" % len(colors))

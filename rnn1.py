@@ -3,7 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 MAX_LENGTH = 4
-NUM_LAYERS = 1
+NUM_LAYERS = 2
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 class EncoderRNN(nn.Module):
@@ -11,6 +11,7 @@ class EncoderRNN(nn.Module):
 
         super(EncoderRNN, self).__init__()
         self.embedding_dimension = embeddings.shape[1]
+        self.num_layers = NUM_LAYERS
         self.hidden_size = hidden_size
         self.embedding = nn.Embedding(input_size, self.embedding_dimension).from_pretrained(embeddings,freeze=False)
         self.gru = nn.GRU(self.embedding_dimension, self.embedding_dimension,num_layers = NUM_LAYERS)
@@ -64,4 +65,6 @@ class RGB_to_Hidden(nn.Module):
 
     def forward(self, input):
         output = self.single_layer(input)
-        return torch.stack([output for i in range(NUM_LAYERS)]).to(device)
+        output = torch.stack([output for i in range(NUM_LAYERS)]).to(device)
+        if NUM_LAYERS != 1 : output = (torch.squeeze(output)).unsqueeze(1)
+        return output
