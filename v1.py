@@ -1,5 +1,5 @@
 from __future__ import unicode_literals, print_function, division
-from get_data import make_list,make_pairs
+from get_data import *
 
 import rnn1
 import random
@@ -19,7 +19,7 @@ SOS_token = 0
 EOS_token = 1
 PAD_token = 2
 MAX_LENGTH = 4
-epochs = 50000
+epochs = 75000
 USE_ATTN = False
 rgb_dim_n = 3
 embedding_dim_n = 300
@@ -80,7 +80,15 @@ def RGB_dist(input_tensor,encoder_output) :
         distance = target_rgb.sub(encoder_output)
         distance = torch.sum(torch.norm(distance, p=2))
         return mu * distance
-
+def end_padding(input_tensor) :
+    #print(tensor_to_string(input_tensor))
+    space = -(tensor_length(input_tensor) - 2) + MAX_LENGTH
+    #print(space)
+    if (space > 0):
+        end_pads =  torch.tensor([[PAD_token]] * space,dtype=torch.long)
+        input_tensor = torch.cat((input_tensor,end_pads),0)
+    #print(input_tensor)
+    return 0
 
 def get_distance(input_tensor,current_RGB) :
     input_color_string = ''
@@ -127,13 +135,16 @@ def train(input_tensor, target_tensor, encoder, decoder,linear, encoder_optimize
 
 
     #RGB to hidden space of decoder layer
-    decoder_hidden = linear(current_RGB)
+    RGB_hidden = linear(current_RGB)
+    decoder_hidden = RGB_hidden.clone()
 
     #start of seq
     decoder_input = torch.tensor([[SOS_token]], device=device)
 
     # fill the vector of predicted output
     prediction = []
+    #end_padding(input_tensor)
+    #print(target_length)
     for di in range(target_length):
         decoder_output, decoder_hidden = decoder(decoder_input, decoder_hidden)
         topv, topi = decoder_output.topk(1)
@@ -143,6 +154,7 @@ def train(input_tensor, target_tensor, encoder, decoder,linear, encoder_optimize
         loss += criterion(decoder_output, target_tensor[di])
         #print(criterion(decoder_output, target_tensor[di]))
         prediction = [prediction + [topi]]
+        decoder_hidden = decoder_hidden + RGB_hidden # to get more info from RGB
         #if decoder_input.item() == EOS_token:
         #    break
     #print(target_length)
@@ -300,7 +312,7 @@ encoder = rnn1.EncoderRNN(vocabulary.n_words, rgb_dim_n,embeddings).to(device)
 decoder = rnn1.DecoderRNN(embedding_dim_n,embeddings,vocabulary.n_words).to(device)
 linear = rnn1.RGB_to_Hidden(rgb_dim_n, embedding_dim_n).to(device)
 
-trainIters(encoder, decoder,linear, 75000,plot_every=500,  print_every=500)
+trainIters(encoder, decoder,linear, epochs,plot_every=500,  print_every=500)
 
 
 import os
@@ -309,4 +321,6 @@ encoder_path = dirpath + '/enc'
 decoder_path = dirpath + '/dec'
 torch.save(encoder, encoder_path)
 torch.save(decoder, decoder_path)
+lin_path = dirpath + '/lin'
+torch.save(linear,lin_path)
 
