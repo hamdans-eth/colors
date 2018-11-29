@@ -1,9 +1,26 @@
 import torch
 from torch.nn import functional
 from torch.autograd import Variable
-
-
+from scipy.optimize import curve_fit
+import numpy as np
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+
+
+
+
+def get_priors(RGB):
+    #return clusters with mu and sigma for each RGB
+    means = {}
+    variances = {}
+    for key in RGB:
+        R = [v[0] for v in RGB[key]]
+        G = [v[1] for v in RGB[key]]
+        B = [v[2] for v in RGB[key]]
+        means[key] = np.array([np.mean(R),np.mean(G), np.mean(B)])
+        variances[key] = np.log(np.array([np.var(R),np.var(G), np.var(B)]))
+    return means,variances
+
 
 def sequence_mask(sequence_length, max_len=None):
     if max_len is None:
