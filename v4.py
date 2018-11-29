@@ -23,7 +23,7 @@ epochs = 150000
 rgb_dim_n = 3
 embedding_dim_n = 300
 mu = 5
-alpha = 0.01 # for KL divergence
+alpha = 0.5 # for KL divergence
 #clip = 50.0
 
 
@@ -116,17 +116,27 @@ def get_distance(input_tensor,current_RGB) :
     distance = mu * np.linalg.norm(np.subtract(current_RGB, target_rgb), 2)
     return mu * distance
 
-def kl_loss(mu_z,log_sigma_z,mu_t,log_sigma_t) :
-
+def kl_loss(mu_z,log_sigma_z,mu_t,sigma_t) :
+    #KL(p(z|x,y) || p(z|y))
     #does that make any sense though ?
     mu_t = torch.Tensor(mu_t)
-    log_sigma_t = torch.Tensor(log_sigma_t)
+    #log_sigma_t = torch.Tensor(log_sigma_t)
     sigma_z = torch.exp(log_sigma_z)
-    sigma_t = torch.exp(log_sigma_t)
+    sigma_t = torch.Tensor(sigma_t)
 
-    result =0.5 * (torch.log(torch.div(sigma_z,sigma_t)) - rgb_dim_n + torch.sum(torch.div(sigma_z,sigma_t)) +
+    #print(sigma_t)
+    #print(mu_z,sigma_z)
+    #print(mu_t,sigma_t)
+    #print()
+    det_t = torch.Tensor([1.])
+    det_z = torch.Tensor([1.])
+    for i in range(3) :
+        det_t = det_t * sigma_t[i]
+        det_z = det_z * sigma_z[i]
+
+    result = 0.5 * (torch.log(det_t/det_z) - rgb_dim_n + torch.sum(torch.div(sigma_z,sigma_t)) +
             torch.dot( torch.div((mu_t - mu_z),sigma_t), mu_t-mu_z))
-    #print(alpha * result)
+
     return alpha * torch.mean(result) #why mean
 
 
@@ -148,21 +158,20 @@ def train(input_tensor, target_tensor, encoder, decoder,linear, encoder_optimize
     #First we iterate through the words feeding tokens & last hidden state
     #print(input_length)
     for i in range(input_length):
-        mu_z,log_sigma_v, encoder_hidden = encoder(input_tensor[i], encoder_hidden)
+        mu_z,log_sigma_z, encoder_hidden = encoder(input_tensor[i], encoder_hidden)
 
 
     #Get the last RGB value
-    current_RGB = sample_z(mu_z,log_sigma_v)
-
-
-
-    #RGB to hidden space of decoder layer
-
+    #print(torch.nn.functional.sigmoid(sample_z(mu_z,log_sigma_v)))
+    target = tensor_to_string(input_tensor)
+    mu_t = means[target]
+    log_sigma_t = log_variances[target]
+    #print(mu_z,log_sigma_z)
+    #print(mu_t,log_sigma_t)
+    current_RGB = sample_z(mu_z, log_sigma_z)
     RGB_hidden = linear(current_RGB)
-    #print(RGB_hidden.shape)
-    #RGB_hidden = torch.stack([RGB_hidden for _ in range(encoder.num_layers)])
-    #print(RGB_hidden.shape)
     decoder_hidden = RGB_hidden.clone()
+
 
     #start of seq
     decoder_input = torch.tensor([[SOS_token]], device=device)
@@ -172,21 +181,22 @@ def train(input_tensor, target_tensor, encoder, decoder,linear, encoder_optimize
     #end_padding(input_tensor)
     #print(target_length)
     for di in range(target_length):
+
         decoder_output, decoder_hidden = decoder(decoder_input, decoder_hidden)
         topv, topi = decoder_output.topk(1)
         decoder_input = topi.squeeze().detach()  # detach from history as input
         loss += criterion(decoder_output, target_tensor[di])
         prediction = [prediction + [topi]]
         decoder_hidden = decoder_hidden + RGB_hidden # to get more info from RGB
+        #resample
 
-    target = tensor_to_string(input_tensor)
-    mu_t = means[target]
-    log_sigma_t = log_variances[target]
+
+
 
     #LOSS
-    kl = kl_loss(mu_z,log_sigma_v,mu_t,log_sigma_t)
-
-    loss = loss / (target_length - 1) + kl # minus sign ?
+    kl = kl_loss(mu_z,log_sigma_z,mu_t,log_sigma_t)
+    rec = loss / (target_length - 1)
+    loss = rec  + kl # minus sign ?
     #print(loss.item())
     loss.backward()
 
@@ -194,7 +204,7 @@ def train(input_tensor, target_tensor, encoder, decoder,linear, encoder_optimize
     decoder_optimizer.step()
     linear_optimizer.step()
     #print(loss.item()) #/ float(target_length) )
-    return loss.item(),kl.detach().numpy() #/ float(target_length)  #+ distance
+    return loss.item(),kl.detach().numpy(),rec.detach().numpy() #/ float(target_length)  #+ distance
 
 
 ## utility functions
@@ -243,6 +253,9 @@ def trainIters(encoder, decoder,linear, n_iters, print_every=1000, plot_every=10
     print_loss_total = 0  # Reset every print_every
     plot_loss_total = 0  # Reset every plot_every
 
+    print_kl_total = 0
+    print_rec_total = 0
+
     encoder_optimizer = optim.Adam(encoder.parameters(), lr=learning_rate)
     decoder_optimizer = optim.Adam(decoder.parameters(), lr=learning_rate)
     linear_optimizer = optim.Adam(linear.parameters(), lr=learning_rate)
@@ -261,8 +274,11 @@ def trainIters(encoder, decoder,linear, n_iters, print_every=1000, plot_every=10
         target_tensor = training_pair[1]
 
 
-        loss,d = train(input_tensor, target_tensor, encoder,
+        loss,kl,rec = train(input_tensor, target_tensor, encoder,
                      decoder, linear, encoder_optimizer, decoder_optimizer, linear_optimizer, criterion)
+        print_kl_total += kl
+        print_rec_total += rec
+
         print_loss_total += loss
         plot_loss_total += loss
 
@@ -272,10 +288,17 @@ def trainIters(encoder, decoder,linear, n_iters, print_every=1000, plot_every=10
             print('%s (%d %d%%) %.4f' % (timeSince(start, iter / n_iters),
                                          iter, iter / n_iters * 100, print_loss_avg))
 
+            print_rec_total = print_rec_total / print_every
+            print_kl_total = print_kl_total / print_every
+            print('average kl = ' + str(print_kl_total))
+            print('average reconstruction = ' + str(print_rec_total))
+
         if iter % plot_every == 0:
             plot_loss_avg = plot_loss_total / plot_every
             plot_losses.append(plot_loss_avg)
             plot_loss_total = 0
+            print_kl_total = 0
+            print_rec_total = 0
         #showPlot(plot_losses)
 
 

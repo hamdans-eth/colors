@@ -23,9 +23,9 @@ class EncoderRNN(nn.Module):
     def forward(self, input, hidden):
         embedded = self.embedding(input).view(1, 1, -1)
         output, hidden = self.gru(embedded, hidden)
-        output_m = torch.squeeze(self.sigmoid(self.embedding_to_RGB_m(output)))
-        output_v = torch.squeeze(self.sigmoid(self.embedding_to_RGB_v(output)))
-        return output_m, output_v, hidden
+        output_m = torch.squeeze(self.embedding_to_RGB_m(output))
+        output_v = torch.squeeze(self.embedding_to_RGB_v(output))
+        return self.sigmoid(output_m), torch.log(self.sigmoid(output_v)), hidden
 
     def initHidden(self):
         return torch.zeros(NUM_LAYERS, 1, self.embedding_dimension, device=device) #return torch.zeros(NUM_LAYERS, 1, self.hidden_size, device=device)

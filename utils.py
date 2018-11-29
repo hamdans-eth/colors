@@ -18,7 +18,8 @@ def get_priors(RGB):
         G = [v[1] for v in RGB[key]]
         B = [v[2] for v in RGB[key]]
         means[key] = np.array([np.mean(R),np.mean(G), np.mean(B)])
-        variances[key] = np.log(np.array([np.var(R),np.var(G), np.var(B)]))
+        variances[key] = np.array([np.var(R),np.var(G), np.var(B)])
+
     return means,variances
 
 
