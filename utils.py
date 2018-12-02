@@ -6,8 +6,17 @@ import numpy as np
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
+class CustomTrace(torch.autograd.Function):
 
+    def forward(self, input):
+        self.isize = input.size()
+        return input.new([torch.trace(input)])
 
+    def backward(self, grad_output):
+        isize = self.isize
+        grad_input = grad_output.new(isize).copy_(torch.eye(*isize))
+        grad_input.mul_(grad_output[0])
+        return grad_input
 
 def get_priors(RGB):
     #return clusters with mu and sigma for each RGB
@@ -18,7 +27,7 @@ def get_priors(RGB):
         G = [v[1] for v in RGB[key]]
         B = [v[2] for v in RGB[key]]
         means[key] = np.array([np.mean(R),np.mean(G), np.mean(B)])
-        variances[key] = np.array([np.var(R),np.var(G), np.var(B)])
+        variances[key] = np.cov( np.array([R, G, B]))
 
     return means,variances
 

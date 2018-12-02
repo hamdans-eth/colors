@@ -16,7 +16,7 @@ class EncoderRNN(nn.Module):
         self.embedding = nn.Embedding(input_size, self.embedding_dimension).from_pretrained(embeddings,freeze=False)
         self.gru = nn.GRU(self.embedding_dimension, self.embedding_dimension,num_layers = NUM_LAYERS)
         self.embedding_to_RGB_m = nn.Linear(self.embedding_dimension,hidden_size) # variances and mus
-        self.embedding_to_RGB_v = nn.Linear(self.embedding_dimension,hidden_size) # variances and mus
+        self.embedding_to_RGB_v = nn.Linear(self.embedding_dimension,hidden_size*2) # covariance matrix is symmetric
 
         self.sigmoid = nn.Sigmoid()
 
@@ -24,8 +24,11 @@ class EncoderRNN(nn.Module):
         embedded = self.embedding(input).view(1, 1, -1)
         output, hidden = self.gru(embedded, hidden)
         output_m = torch.squeeze(self.embedding_to_RGB_m(output))
-        output_v = torch.squeeze(self.embedding_to_RGB_v(output))
-        return self.sigmoid(output_m), torch.log(self.sigmoid(output_v)), hidden
+        f = torch.squeeze(self.embedding_to_RGB_v(output))
+        #cov matrix
+        f = torch.Tensor([ [f[0], 0 , 0], [f[1],f[2] ,0], [f[3],f[4],f[5]] ])
+        #Random lower triangular => covariance when multiplied f * f'
+        return self.sigmoid(output_m).view(-1,1), self.sigmoid(f), hidden
 
     def initHidden(self):
         return torch.zeros(NUM_LAYERS, 1, self.embedding_dimension, device=device) #return torch.zeros(NUM_LAYERS, 1, self.hidden_size, device=device)

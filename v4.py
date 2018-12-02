@@ -10,7 +10,7 @@ import torchtext.vocab as vocab
 import numpy as np
 import time
 import math
-from utils import get_priors
+from utils import get_priors, CustomTrace
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -22,10 +22,9 @@ MAX_LENGTH = 4
 epochs = 150000
 rgb_dim_n = 3
 embedding_dim_n = 300
-mu = 5
-alpha = 0.5 # for KL divergence
-#clip = 50.0
-
+learning_r = 0.01
+alpha = 0.05 # for KL divergence
+trace = CustomTrace()
 
 #Getting data (list of color descriptions)
 colors= make_list()
@@ -33,6 +32,10 @@ colors= make_list()
 pairs,vocabulary,RGB = make_pairs(colors,'train')
 
 means,log_variances=  get_priors(RGB)
+for k,v in log_variances.items() :
+    s = np.all(np.linalg.eigvals(v) > 0)
+    if not s : print('not')
+
 
 #get weights
 s = vocab.GloVe('6B')
@@ -82,7 +85,8 @@ def RGB_dist(input_tensor,encoder_output) :
         target_rgb = torch.Tensor(target_rgb).to(device)**2
         distance = target_rgb.sub(encoder_output**2)
         distance = torch.sum(torch.norm(distance, p=2))
-        return mu * distance
+        return distance #  mu * distance
+
 def end_padding(input_tensor) :
     #print(tensor_to_string(input_tensor))
     space = -(tensor_length(input_tensor) - 2) + MAX_LENGTH
@@ -93,11 +97,22 @@ def end_padding(input_tensor) :
     #print(input_tensor)
     return 0
 
-def sample_z(mu, log_var):
-    eps = torch.randn((1, rgb_dim_n), requires_grad=True)
+def cholesky(cov) :
+    L = torch.zeros_like(cov)
+    for i in range(cov.shape[-1]):
+        for j in range(i + 1):
+            s = 0.0
+            for k in range(j):
+                s = s + L[i, k] * L[j, k]
+            L[i, j] = torch.sqrt(cov[i, i] - s) if (i == j) else \
+                (1.0 / L[j, j] * (cov[i, j] - s))
+    return L
 
-    #   torch.Variable(torch.randn(1, rgb_dim_n)) #mb_size = 1
-    return mu + torch.exp(log_var / 2) * eps
+def sample_z(mu, C):
+    #reparam trick
+    eps = torch.randn((3,1), requires_grad=True)
+
+    return (mu + torch.mm(C,eps)).squeeze()
 
 def get_distance(input_tensor,current_RGB) :
     input_color_string = ''
@@ -116,28 +131,21 @@ def get_distance(input_tensor,current_RGB) :
     distance = mu * np.linalg.norm(np.subtract(current_RGB, target_rgb), 2)
     return mu * distance
 
-def kl_loss(mu_z,log_sigma_z,mu_t,sigma_t) :
-    #KL(p(z|x,y) || p(z|y))
-    #does that make any sense though ?
-    mu_t = torch.Tensor(mu_t)
-    #log_sigma_t = torch.Tensor(log_sigma_t)
-    sigma_z = torch.exp(log_sigma_z)
-    sigma_t = torch.Tensor(sigma_t)
+def kl_loss(mu_z,C_z,mu_t,cov_t) :
+    #KL(p(z|x,y) || N(mu_y, cov_y))
 
-    #print(sigma_t)
-    #print(mu_z,sigma_z)
-    #print(mu_t,sigma_t)
-    #print()
-    det_t = torch.Tensor([1.])
-    det_z = torch.Tensor([1.])
-    for i in range(3) :
-        det_t = det_t * sigma_t[i]
-        det_z = det_z * sigma_z[i]
+    mu_t = torch.Tensor(mu_t).view(-1,1)
+    cov_z = torch.mm(C_z,C_z.t())
+    det_t = torch.Tensor([np.linalg.det(cov_t)])
+    cov_t = torch.Tensor(cov_t)
+    cov_t_inv = cov_t.inverse()
+    det_z = (C_z.diagonal().prod())**2
 
-    result = 0.5 * (torch.log(det_t/det_z) - rgb_dim_n + torch.sum(torch.div(sigma_z,sigma_t)) +
-            torch.dot( torch.div((mu_t - mu_z),sigma_t), mu_t-mu_z))
-
-    return alpha * torch.mean(result) #why mean
+    diff = mu_t - mu_z
+    square = torch.mm(diff.t(),cov_t_inv)
+    square = torch.mm(square,diff)
+    result = 0.5 * ( torch.log(det_t/det_z) - rgb_dim_n + trace(torch.mm(cov_t_inv,cov_z)) + square)
+    return alpha * result
 
 
 
@@ -168,7 +176,9 @@ def train(input_tensor, target_tensor, encoder, decoder,linear, encoder_optimize
     log_sigma_t = log_variances[target]
     #print(mu_z,log_sigma_z)
     #print(mu_t,log_sigma_t)
-    current_RGB = sample_z(mu_z, log_sigma_z)
+    current_RGB = sample_z(mu_z, log_sigma_z) # can be out of unit interval !!
+
+
     RGB_hidden = linear(current_RGB)
     decoder_hidden = RGB_hidden.clone()
 
@@ -247,7 +257,7 @@ def timeSince(since, percent):
 
 
 
-def trainIters(encoder, decoder,linear, n_iters, print_every=1000, plot_every=100, learning_rate=0.005):
+def trainIters(encoder, decoder,linear, n_iters, print_every=1000, plot_every=100, learning_rate=0.01):
     start = time.time()
     plot_losses = []
     print_loss_total = 0  # Reset every print_every
@@ -256,9 +266,9 @@ def trainIters(encoder, decoder,linear, n_iters, print_every=1000, plot_every=10
     print_kl_total = 0
     print_rec_total = 0
 
-    encoder_optimizer = optim.Adam(encoder.parameters(), lr=learning_rate)
-    decoder_optimizer = optim.Adam(decoder.parameters(), lr=learning_rate)
-    linear_optimizer = optim.Adam(linear.parameters(), lr=learning_rate)
+    encoder_optimizer = optim.SGD(encoder.parameters(), lr=learning_rate)
+    decoder_optimizer = optim.SGD(decoder.parameters(), lr=learning_rate)
+    linear_optimizer = optim.SGD(linear.parameters(), lr=learning_rate)
 
     training_pairs = [tensorsFromPair(random.choice(pairs))
                       for i in range(n_iters)]
@@ -356,15 +366,15 @@ encoder = rnn4.EncoderRNN(vocabulary.n_words, rgb_dim_n,embeddings).to(device)
 decoder = rnn4.DecoderRNN(embedding_dim_n,embeddings,vocabulary.n_words).to(device)
 linear = rnn4.RGB_to_Hidden(rgb_dim_n, embedding_dim_n).to(device)
 
-trainIters(encoder, decoder,linear, epochs,plot_every=500,  print_every=500)
+trainIters(encoder, decoder,linear, epochs,plot_every=500,  print_every=500,learning_rate=learning_r)
 
 
 import os
 dirpath = os.getcwd()
-encoder_path = dirpath + '/enc_vae'
-decoder_path = dirpath + '/dec_vae'
+encoder_path = dirpath + '/enc_cov'
+decoder_path = dirpath + '/dec_cov'
 torch.save(encoder, encoder_path)
 torch.save(decoder, decoder_path)
-lin_path = dirpath + '/lin_vae'
+lin_path = dirpath + '/lin_cov'
 torch.save(linear,lin_path)
 
