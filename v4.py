@@ -22,14 +22,14 @@ MAX_LENGTH = 4
 epochs = 150000
 rgb_dim_n = 3
 embedding_dim_n = 300
-learning_r = 0.01
+learning_r = 0.1
 alpha = 0.05 # for KL divergence
 trace = CustomTrace()
 
 #Getting data (list of color descriptions)
 colors= make_list()
 #training pairs, vocabulary, dictionnary with a list of RGB values associated to every color
-pairs,vocabulary,RGB = make_pairs(colors,'train')
+pairs,vocabulary,RGB = make_pairs(colors,'test')
 
 means,log_variances=  get_priors(RGB)
 for k,v in log_variances.items() :
@@ -110,6 +110,7 @@ def cholesky(cov) :
 
 def sample_z(mu, C):
     #reparam trick
+    C = torch.exp(C)
     eps = torch.randn((3,1), requires_grad=True)
 
     return (mu + torch.mm(C,eps)).squeeze()
@@ -133,14 +134,15 @@ def get_distance(input_tensor,current_RGB) :
 
 def kl_loss(mu_z,C_z,mu_t,cov_t) :
     #KL(p(z|x,y) || N(mu_y, cov_y))
-
+    #C_z = torch.exp(C_z)
     mu_t = torch.Tensor(mu_t).view(-1,1)
     cov_z = torch.mm(C_z,C_z.t())
     det_t = torch.Tensor([np.linalg.det(cov_t)])
     cov_t = torch.Tensor(cov_t)
     cov_t_inv = cov_t.inverse()
     det_z = (C_z.diagonal().prod())**2
-
+    # print(mu_z)
+    # print(cov_z)
     diff = mu_t - mu_z
     square = torch.mm(diff.t(),cov_t_inv)
     square = torch.mm(square,diff)

@@ -28,7 +28,7 @@ class EncoderRNN(nn.Module):
         #cov matrix
         f = torch.Tensor([ [f[0], 0 , 0], [f[1],f[2] ,0], [f[3],f[4],f[5]] ])
         #Random lower triangular => covariance when multiplied f * f'
-        return self.sigmoid(output_m).view(-1,1), self.sigmoid(f), hidden
+        return self.sigmoid(output_m).view(-1,1), f, hidden
 
     def initHidden(self):
         return torch.zeros(NUM_LAYERS, 1, self.embedding_dimension, device=device) #return torch.zeros(NUM_LAYERS, 1, self.hidden_size, device=device)
