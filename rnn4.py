@@ -4,6 +4,7 @@ import torch.nn.functional as F
 
 MAX_LENGTH = 4
 NUM_LAYERS = 1
+grad_clipping = 10
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 class EncoderRNN(nn.Module):
@@ -23,10 +24,12 @@ class EncoderRNN(nn.Module):
     def forward(self, input, hidden):
         embedded = self.embedding(input).view(1, 1, -1)
         output, hidden = self.gru(embedded, hidden)
+        if hidden.requires_grad:
+            hidden.register_hook(lambda x: x.clamp(min=-grad_clipping, max=grad_clipping))
         output_m = torch.squeeze(self.embedding_to_RGB_m(output))
         f = torch.squeeze(self.embedding_to_RGB_v(output))
         #cov matrix
-        f = torch.Tensor([ [f[0], 0 , 0], [f[1],f[2] ,0], [f[3],f[4],f[5]] ])
+        #f = torch.Tensor([ [f[0], 0 , 0], [f[1],f[2] ,0], [f[3],f[4],f[5]] ])
         #Random lower triangular => covariance when multiplied f * f'
         return self.sigmoid(output_m).view(-1,1), f, hidden
 
@@ -54,48 +57,11 @@ class DecoderRNN(nn.Module):
             hidden = hidden.view([1,300])
             hidden = hidden.unsqueeze(0)
         output, hidden = self.gru(output, hidden)
+        if hidden.requires_grad:
+            hidden.register_hook(lambda x: x.clamp(min=-grad_clipping, max=grad_clipping))
         output = self.softmax(self.out(output[0]))
         #print(output)
         return output, hidden
-
-    def initHidden(self):
-        return torch.zeros(1, 1, self.hidden_size, device=device)
-
-
-class AttnDecoderRNN(nn.Module):
-    def __init__(self, hidden_size, output_size, dropout_p=0.1, max_length=MAX_LENGTH):
-        super(AttnDecoderRNN, self).__init__()
-        self.hidden_size = hidden_size
-        self.output_size = output_size
-        self.dropout_p = dropout_p
-        self.max_length = max_length
-
-        self.embedding = nn.Embedding(self.output_size, self.hidden_size)
-        self.attn = nn.Linear(self.hidden_size * 2, self.max_length+1)
-        self.attn_combine = nn.Linear(self.hidden_size * 2, self.hidden_size)
-        self.dropout = nn.Dropout(self.dropout_p)
-        self.gru = nn.GRU(self.hidden_size, self.hidden_size)
-        self.out = nn.Linear(self.hidden_size, self.output_size)
-
-    def forward(self, input, hidden, encoder_outputs):
-        embedded = self.embedding(input).view(1, 1, -1)
-        embedded = self.dropout(embedded)
-
-        #hidden = (torch.squeeze(hidden)).unsqueeze(0)
-
-        attn_weights = F.softmax(
-            self.attn(torch.cat((embedded[0], hidden[0]), 1)), dim=1)
-        attn_applied = torch.bmm(attn_weights.unsqueeze(0),
-                                 encoder_outputs.unsqueeze(0))
-
-        output = torch.cat((embedded[0], attn_applied[0]), 1)
-        output = self.attn_combine(output).unsqueeze(0)
-
-        output = F.relu(output)
-        output, hidden = self.gru(output, hidden)
-
-        output = F.log_softmax(self.out(output[0]), dim=1)
-        return output, hidden, attn_weights
 
     def initHidden(self):
         return torch.zeros(1, 1, self.hidden_size, device=device)

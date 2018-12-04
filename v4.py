@@ -10,7 +10,7 @@ import torchtext.vocab as vocab
 import numpy as np
 import time
 import math
-from utils import get_priors, CustomTrace
+from utils import get_priors_, CustomTrace,cholesky
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -19,19 +19,20 @@ SOS_token = 0
 EOS_token = 1
 PAD_token = 2
 MAX_LENGTH = 4
-epochs = 150000
+epochs = 15000
 rgb_dim_n = 3
 embedding_dim_n = 300
-learning_r = 0.1
+learning_r = 0.05
 alpha = 0.05 # for KL divergence
 trace = CustomTrace()
+grad_clipping = 10
 
 #Getting data (list of color descriptions)
 colors= make_list()
 #training pairs, vocabulary, dictionnary with a list of RGB values associated to every color
-pairs,vocabulary,RGB = make_pairs(colors,'test')
+pairs,vocabulary,RGB = make_pairs(colors,'train')
 
-means,log_variances=  get_priors(RGB)
+means,log_variances=  get_priors_(RGB)
 for k,v in log_variances.items() :
     s = np.all(np.linalg.eigvals(v) > 0)
     if not s : print('not')
@@ -97,23 +98,30 @@ def end_padding(input_tensor) :
     #print(input_tensor)
     return 0
 
-def cholesky(cov) :
-    L = torch.zeros_like(cov)
-    for i in range(cov.shape[-1]):
-        for j in range(i + 1):
-            s = 0.0
-            for k in range(j):
-                s = s + L[i, k] * L[j, k]
-            L[i, j] = torch.sqrt(cov[i, i] - s) if (i == j) else \
-                (1.0 / L[j, j] * (cov[i, j] - s))
-    return L
 
-def sample_z(mu, C):
+def mm_triangular(v,var) :
+    result = torch.zeros(3)
+    a = [ v[0].mul(var[0]) + v[1].mul(var[1]) + v[2].mul(var[3]),
+          v[1].mul(var[2]) + v[2].mul(var[4]),
+          v[2].mul(var[5]) ]
+    for i in range(3) :
+        result[i] = result[i] + a[i]
+    result = result.unsqueeze(0).t()
+
+    return result
+
+def sample_z(mu, var):
+    #var vector of length 6 such that
+    # a_0   0       0
+    # a_1   a_2     0
+    # a_3   a_4     a_5
     #reparam trick
-    C = torch.exp(C)
-    eps = torch.randn((3,1), requires_grad=True)
 
-    return (mu + torch.mm(C,eps)).squeeze()
+
+    eps = torch.randn((3,1), requires_grad=True)
+    result = (mu + mm_triangular(eps,var) ).squeeze()
+
+    return result
 
 def get_distance(input_tensor,current_RGB) :
     input_color_string = ''
@@ -132,17 +140,37 @@ def get_distance(input_tensor,current_RGB) :
     distance = mu * np.linalg.norm(np.subtract(current_RGB, target_rgb), 2)
     return mu * distance
 
+def det(a):
+    a = a.clone()
+    idx = [0,2,5]
+    det = torch.Tensor([1.])
+    for i in idx :
+        det = det * a[i]
+    return det.pow(2)
+
+def sq_triangular(a):
+    a = a.clone()
+    array =[[a[0].pow(2) , a[0].mul(a[1]) , a[0].mul(a[3])],
+                          [a[0].mul(a[1]) , a[2].pow(2) + a[1].pow(2), a[2].mul(a[4])],
+                          [a[0].mul(a[3]), a[2].mul(a[4]),a[3].pow(2) + a[4].pow(2) + a[5].pow(2)]]
+
+    squared = torch.zeros([3,3])
+    for i in range(3):
+        for j in range(3) : squared[i][j] = squared[i][j] + array[i][j]
+
+    return squared
+
+
+
 def kl_loss(mu_z,C_z,mu_t,cov_t) :
     #KL(p(z|x,y) || N(mu_y, cov_y))
-    #C_z = torch.exp(C_z)
+    cov_t = torch.tensor(cov_t,requires_grad=True).float()
+    cov_z =sq_triangular(C_z)
+    det_z = det(C_z)
     mu_t = torch.Tensor(mu_t).view(-1,1)
-    cov_z = torch.mm(C_z,C_z.t())
-    det_t = torch.Tensor([np.linalg.det(cov_t)])
+    det_t = torch.potrf(cov_t).diag().prod()
     cov_t = torch.Tensor(cov_t)
     cov_t_inv = cov_t.inverse()
-    det_z = (C_z.diagonal().prod())**2
-    # print(mu_z)
-    # print(cov_z)
     diff = mu_t - mu_z
     square = torch.mm(diff.t(),cov_t_inv)
     square = torch.mm(square,diff)
@@ -168,7 +196,7 @@ def train(input_tensor, target_tensor, encoder, decoder,linear, encoder_optimize
     #First we iterate through the words feeding tokens & last hidden state
     #print(input_length)
     for i in range(input_length):
-        mu_z,log_sigma_z, encoder_hidden = encoder(input_tensor[i], encoder_hidden)
+        mu_z,sigma_z, encoder_hidden = encoder(input_tensor[i], encoder_hidden)
 
 
     #Get the last RGB value
@@ -178,7 +206,9 @@ def train(input_tensor, target_tensor, encoder, decoder,linear, encoder_optimize
     log_sigma_t = log_variances[target]
     #print(mu_z,log_sigma_z)
     #print(mu_t,log_sigma_t)
-    current_RGB = sample_z(mu_z, log_sigma_z) # can be out of unit interval !!
+
+
+    current_RGB = sample_z(mu_z, sigma_z) # can be out of unit interval !!
 
 
     RGB_hidden = linear(current_RGB)
@@ -200,23 +230,22 @@ def train(input_tensor, target_tensor, encoder, decoder,linear, encoder_optimize
         loss += criterion(decoder_output, target_tensor[di])
         prediction = [prediction + [topi]]
         decoder_hidden = decoder_hidden + RGB_hidden # to get more info from RGB
-        #resample
-
-
 
 
     #LOSS
-    kl = kl_loss(mu_z,log_sigma_z,mu_t,log_sigma_t)
+    kl = kl_loss(mu_z,sigma_z,mu_t,log_sigma_t)
     rec = loss / (target_length - 1)
     loss = rec  + kl # minus sign ?
-    #print(loss.item())
     loss.backward()
+    torch.nn.utils.clip_grad_norm(encoder.parameters(), grad_clipping)
+    torch.nn.utils.clip_grad_norm(decoder.parameters(), grad_clipping)
+    torch.nn.utils.clip_grad_norm(linear.parameters(), grad_clipping)
 
     encoder_optimizer.step()
     decoder_optimizer.step()
     linear_optimizer.step()
     #print(loss.item()) #/ float(target_length) )
-    return loss.item(),kl.detach().numpy(),rec.detach().numpy() #/ float(target_length)  #+ distance
+    return loss.item() , kl.detach().numpy(),rec.detach().numpy() #/ float(target_length)  #+ distance
 
 
 ## utility functions
@@ -288,6 +317,7 @@ def trainIters(encoder, decoder,linear, n_iters, print_every=1000, plot_every=10
 
         loss,kl,rec = train(input_tensor, target_tensor, encoder,
                      decoder, linear, encoder_optimizer, decoder_optimizer, linear_optimizer, criterion)
+
         print_kl_total += kl
         print_rec_total += rec
 
