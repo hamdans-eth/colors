@@ -1,3 +1,84 @@
+# ADAM #
+
+learning_r = 0.0001
+6m 24s (- 0m 0s) (15000 100%) 7.6423
+average kl = [[1.7244549]]
+average reconstruction = 5.917822394371033
+
+not shared
+learning_r = 0.0001 + 10*
+4m 23s (- 0m 0s) (15000 100%) 4.6661
+average kl = [[1.7762502]]
+average reconstruction = 2.889864119052887
+
+not shared + nesterov(0.5)
+4m 24s (- 0m 0s) (15000 100%) 4.5172
+average kl = [[1.7970881]]
+average reconstruction = 2.7201125802993773
+
+not shared + nesterov(0.5) + small var
+4m 24s (- 0m 0s) (15000 100%) 4.5172
+average kl = [[1.7970881]]
+average reconstruction = 2.7201125802993773
+
+
+Shared learning
+4m 20s (- 0m 0s) (15000 100%) 5.0738
+average kl = [[1.7673819]]
+average reconstruction = 3.3063931107521056
+
+##
+
+working ## 
+
+#Constants
+SOS_token = 0
+EOS_token = 1
+PAD_token = 2
+MAX_LENGTH = 4
+epochs = 150000
+rgb_dim_n = 3
+embedding_dim_n = 300
+learning_r = 0.005
+alpha = 0.5 # for KL divergence
+trace = CustomTrace()
+grad_clipping = 10
+
+-.-.-.-
+
+33m 58s (- 0m 0s) (150000 100%) 3.8226
+average kl = [[1.8432392]]
+average reconstruction = 1.9793220938444138
+
+
+##
+
+
+Cholesky factor
+
+
+
+def cholesky(A):
+    L = th.zeros_like(A)
+
+    for i in range(A.shape[-1]):
+        for j in range(i+1):
+            s = 0.0
+            for k in range(j):
+                s = s + L[i,k].clone() * L[j,k].clone()
+
+            L[...,i,j] = th.sqrt(A[i,i] - s) if (i == j) else \
+                      (1.0 / L[j,j].clone() * (A[...,i,j] - s))
+    return L
+
+export PATH="$HOME/.pyenv/bin:$PATH"
+eval "$(pyenv init -)"
+eval "$(pyenv virtualenv-init -)"
+exec $SHELL
+
+np.set_printoptions(edgeitems=3,infstr='inf', linewidth=75, nanstr='nan', precision=8, suppress=False, threshold=1000, formatter=None)
+
+
 unknown words :
 
 
@@ -60,3 +141,58 @@ blurple
 # > prussian blue
 # = prussian blue
 # < greyish blue <EOS>
+
+if not DECODE :
+    for i in range(1000):
+        with torch.no_grad() :
+            #ENCODING PART
+            current = []
+            rand_idx = random.randrange(len(pairs))
+            description = pairs[rand_idx][0]
+            current_RGB = RGB[description][random.randrange(len(RGB[description]))]
+
+            current_RGB_tensor = torch.tensor(current_RGB, dtype=torch.float32)
+
+            input_tensor = tensorFromDescription(vocabulary, description)
+            input_length = input_tensor.size(0)
+            encoder_hidden = torch.zeros(enc.num_layers, 1, 300)
+
+            for i in range(input_length):
+                mu_z, log_sigma_v, encoder_hidden = enc(input_tensor[i], encoder_hidden)
+            # Get the last RGB value
+            encoder_output = sample_RGB(mu_z,log_sigma_v,COEF)
+            #print(current_RGB)
+            # RGB += [current_RGB]
+            current += [current_RGB]
+
+            print('real RGB')
+            print(current_RGB)
+            print('decoded RGB')
+            print(encoder_output)
+            RGB_hidden = lin(encoder_output)
+            decoder_hidden = RGB_hidden.clone()
+            decoder_input = torch.LongTensor([[SOS_token]])
+
+            string = ''
+            for t in range(10):
+                decoder_output, decoder_hidden = dec(decoder_input, decoder_hidden)  # encoder outputs for attn
+                topv, topi = decoder_output.topk(1)
+                decoder_input = topi.squeeze().detach()
+                decoder_hidden += RGB_hidden
+                word = vocabulary.index2word[topi[0].item()]
+
+                if topi == EOS_token: break
+                if t != 0: string += vocabulary.index2word[topi[0].item()] + ' '
+
+            for i, word in enumerate(string.split()):
+                if i < len(description.split(' ')) and word == description.split(' ')[i]:
+                    correct += 1
+                    # print(word)
+                count += 1
+
+            print('decoded description : "' + string + '"')
+            print('real decription : "' + description + '"')
+            print()
+
+
+    print("%.2f" % (correct/count* 100) +'% accuracy ')
