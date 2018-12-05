@@ -22,12 +22,12 @@ learning_r = 0.00005
 alpha = 0.5 # for penalizing KL divergence
 trace = CustomTrace()
 grad_clipping = 10
-SAVE = False
+SAVE = True
 
 #Getting data (list of color descriptions)
 colors = make_list()
 #training pairs, vocabulary, dictionnary with a list of RGB values associated to every color
-pairs,vocabulary,RGB = make_pairs(colors,'test')
+pairs,vocabulary,RGB = make_pairs(colors,'tarin')
 #statistical data on RGB values
 means,variances =  get_priors_(RGB)
 
