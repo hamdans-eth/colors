@@ -1,10 +1,12 @@
 import pprint
 pp=pprint.PrettyPrinter(indent='3')
-import numpy as np
+import os
 import sys
 sys.path.append('..')
 import numpy as np
 from data import munroecorpus
+import torch
+import torchtext.vocab as vocab
 
 
 #Vocabulary
@@ -13,8 +15,8 @@ class Vocabulary:
         self.name = name
         self.word2index = {}
         self.word2count = {}
-        self.index2word = {0: "SOS", 1: "EOS"}
-        self.n_words = 2  # Count SOS and EOS
+        self.index2word = {0: "SOS", 1: "EOS",2: "PAD"}
+        self.n_words = 3  # Count SOS and EOS
 
     def addDescription(self, description):
         for word in description.split(' '):
@@ -29,38 +31,10 @@ class Vocabulary:
         else:
             self.word2count[word] += 1
 
-
-
-
-#TODO full dataset (right now just train)
-def make_list( ) :
+def make_list() :
     training = munroecorpus.get_training_handles()
     names = list(training[0].keys())
-    #deal with -
-
     return names
-
-
-def make_pairs(colors) :
-    vocabulary = Vocabulary('eng')
-    print("Read %s descriptions" % len(colors))
-    for description in colors :
-        vocabulary.addDescription(description)
-    print("Counted words:")
-    print(vocabulary.n_words)
-    names = [words.split() for words in colors]
-    pairs = list(zip(names,names))
-    return pairs, vocabulary
-
-def make_pairs2(colors) :
-    vocabulary = Vocabulary('eng')
-    print("Read %s descriptions" % len(colors))
-    for description in colors :
-        vocabulary.addDescription(description)
-    print("Counted words:")
-    print(vocabulary.n_words)
-    pairs = list(zip(colors,colors))
-    return pairs, vocabulary
 
 def hsv_to_rgb(h,s,v) :
     C = np.multiply(v, s)
@@ -85,11 +59,12 @@ def hsv_to_rgb(h,s,v) :
         r_.append(r + m[i])
         g_.append(g + m[i])
         b_.append(b + m[i])
+        rgb = []
+    for i in range(len(r_)) :
+        rgb.append( [ r_[i],g_[i],b_[i] ])
+    return rgb
 
-    return r_,g_,b_
-
-#training only
-def make_pairs3(colors, mode) :
+def make_pairs(colors, mode) :
     vocabulary = Vocabulary('eng')
     print("Read %s descriptions" % len(colors))
     RGB = []
@@ -117,43 +92,35 @@ def make_pairs3(colors, mode) :
     print(vocabulary.n_words)
     pairs = list(zip(colors,colors))
     RGB = dict(zip(colors, RGB))
-    print(RGB)
     return pairs, vocabulary, RGB
 
+def get_embeddings (vocabulary,embedding_space):
+    s = vocab.GloVe('6B')
+    sample = s.vectors[0]
 
+    #random uniform(Min,Max) initialization of unknown words, else init. with gloVe embeddings
+    r1 = torch.max(s.vectors)
+    r2 = torch.min(s.vectors)
+    embeddings  = np.zeros([ vocabulary.n_words, embedding_space])
+    number_unknown = 0
+    for i in range(vocabulary.n_words) :
+        word = vocabulary.index2word[i]
+        if word in s.stoi :
+            embeddings[i] = s.vectors[s.stoi[word]]
+        else :
+            number_unknown += 1
+            embeddings[i] = (r1 - r2) * torch.rand_like(sample) + r2
+    return torch.from_numpy(embeddings).float()
 
-# #get  lists of full paths to data files
-# colorname = 'acid green'
-# training = munroecorpus.get_training_handles()
-# dev = munroecorpus.get_dev_handles()
-# test = munroecorpus.get_test_handles()
-# train_fn = munroecorpus.get_training_filename(colorname,dim = 0) #supply dim = 0,1,2 for h,s,v
-# dev_fn = munroecorpus.get_dev_filename(colorname)
-# test_fn = munroecorpus.get_test_filename(colorname)
-#
-#
-# example_train_data = munroecorpus.open_datafile(train_fn)
-# example_dev_data = munroecorpus.open_datafile(dev_fn)
-# example_test_data = munroecorpus.open_datafile(test_fn)
-#
-# names = list(training[0].keys())
-#
-# print(make_pairs(names))
-
-
-
-
-###
-# print("rgb: \n%s" % pp.pformat(example_test_data))
-# #
-# print("Example Training Handles:\n %s" % pp.pformat(list(training[0:3])[:10])) #pp.pformat(list(training[0:3].items())[:10]))
-# print("Example Dev Handles:\n %s" % pp.pformat(list(dev.items())[:10]))
-# print("Example Test Handles:\n %s" % pp.pformat(list(test.items())[:10]))
-#
-# print("Example Training Filename:\n %s" % pp.pformat(train_fn))
-# print("Example Dev Filename :\n %s" % pp.pformat(dev_fn))
-# print("Example Test Filename:\n %s" % pp.pformat(test_fn))
-#
-# print("Example Training Data: \n%s" % pp.pformat(example_train_data[:10]))
-# print("Example Dev Data: \n%s" % pp.pformat(example_dev_data[:10]))
-# print("Example Test Data: \n%s" % pp.pformat(example_test_data[:10]))
+def load_models(diagonal = False) :
+    abs_path = os.path.dirname(os.path.abspath(__file__)) + '/'  # '/Users/sami/Desktop/project/'
+    path = abs_path + 'dec'
+    if diagonal: path += '_s'
+    dec = torch.load(path, map_location='cpu')
+    path = abs_path + 'enc'
+    if diagonal: path += '_s'
+    enc = torch.load(path, map_location='cpu')
+    path = abs_path + 'lin'
+    if diagonal: path += '_s'
+    lin = torch.load(path, map_location='cpu')
+    return enc,lin,dec
