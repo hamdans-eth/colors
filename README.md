@@ -26,5 +26,5 @@ Run test.py (loads what has been saved as model).
 Select a set of RGB values and outputs a description and then compares it with the corresponding description of the test set.
 The accuracy is displayed (exact match).
 
- -  - you can tune the noise coefficient of the sampling with `-c` argument (default: `0.1)`
+ - you can tune the noise coefficient of the sampling with `-c` argument (default: `0.1)`
  - you can chose the number of sequences generated for each RGB value with `-n` (default :`1`)
