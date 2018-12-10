@@ -4,15 +4,18 @@ import math
 import time
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-
+MAX_LENGTH = 4
 SOS_token = 0
 EOS_token = 1
 PAD_token = 2
 
+
 def tensorFromDescription(vocabulary, description):
-    indexes = [PAD_token] + [vocabulary.word2index[word] for word in description.split(' ')]
-    indexes.append(EOS_token)
-    return torch.tensor(indexes, dtype=torch.long, device=device).view(-1, 1)
+    indices = [vocabulary.word2index[word] for word in description.split(' ')]
+    indices.append(EOS_token)
+    diff = MAX_LENGTH + 1 - len(indices)
+    if diff > 0 : indices.extend([PAD_token for _ in range(diff)])
+    return torch.tensor(indices, dtype=torch.long, device=device).view(-1, 1)
 
 def sample_z(mu,sigma,coef=1):
     #reparam trick multivariate

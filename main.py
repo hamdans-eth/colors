@@ -7,27 +7,36 @@ import torch.nn as nn
 from torch import optim
 from utils import *
 import os
+import argparse
 
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+parser = argparse.ArgumentParser()
+parser.add_argument("-s","--save",help="set to true to save model",action="store_true")
+args = parser.parse_args()
+if args.save:
+    print('Model will be saved.')
+else :
+    print('Model will not be saved.')
 
 #Constants
+
+SAVE = args.save
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 SOS_token = 0
 EOS_token = 1
 PAD_token = 2
 MAX_LENGTH = 4
-epochs = 50000
+epochs = 5000
 latent_space = 3
 embedding_space = 300
 learning_r = 0.00005
 alpha = 0.5 # for penalizing KL divergence
 trace = CustomTrace()
 grad_clipping = 10
-SAVE = True
 
 #Getting data (list of color descriptions)
 colors = make_list()
 #training pairs, vocabulary, dictionnary with a list of RGB values associated to every color
-pairs,vocabulary,RGB = make_pairs(colors,'tarin')
+pairs,vocabulary,RGB = make_pairs(colors,'train')
 #statistical data on RGB values
 means,variances =  get_priors_(RGB)
 
@@ -81,12 +90,13 @@ def train(input_tensor, target_tensor, encoder, decoder,linear, encoder_optimize
 
     # fill the vector of predicted output
     prediction = []
-
-    for di in range(target_length):
+    p = []
+    for di in range(MAX_LENGTH + 1):
         decoder_output, decoder_hidden = decoder(decoder_input, decoder_hidden)
 
         #compute the softmax loss with outputted token
         rec_loss += criterion(decoder_output, target_tensor[di])
+        p = [p + [target_tensor[di]]]
 
         #building the output string
         topv, topi = decoder_output.topk(1)
@@ -95,7 +105,6 @@ def train(input_tensor, target_tensor, encoder, decoder,linear, encoder_optimize
 
         #the hidden state gets the latent space
         decoder_hidden = decoder_hidden + transformed_latent
-
 
     #Loss = alpha * divergence + reconstruction error
     mu_t = means[target]
@@ -125,8 +134,8 @@ def trainIters(encoder, decoder,linear, n_iters, print_every=1000, plot_every=10
     print_rec_total = 0
 
     encoder_optimizer = optim.Adam(encoder.parameters(),lr=learning_rate)
-    decoder_optimizer = optim.SGD(decoder.parameters(), lr=1000 * learning_rate, momentum=0.5, nesterov=True)
-    linear_optimizer = optim.SGD(linear.parameters(), lr=1000 * learning_rate, momentum=0.5, nesterov=True)
+    decoder_optimizer = optim.SGD(decoder.parameters(), lr=1000*learning_rate, momentum=0.5, nesterov=True)
+    linear_optimizer = optim.SGD(linear.parameters(), lr=1000*learning_rate, momentum=0.5, nesterov=True)
 
     training_pairs = [tensorsFromPair(random.choice(pairs),vocabulary)
                       for i in range(n_iters)]
@@ -152,6 +161,7 @@ def trainIters(encoder, decoder,linear, n_iters, print_every=1000, plot_every=10
         plot_loss_total += loss
 
         if iter % print_every == 0:
+
             print_loss_avg = print_loss_total / print_every
             print_loss_total = 0
             print('%s (%d %d%%) %.4f' % (timeSince(start, iter / n_iters),
