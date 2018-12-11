@@ -1,5 +1,5 @@
 # Grounded language learning of visual-lexical color descriptions
-The goal is to learn from description-color pairs to describe colors, and to create colors from description. `python main.py --save`
+The goal is to learn from description-color pairs to describe colors, and to create colors from description. 
 
 ## What's needed
  - python 3.6
@@ -10,7 +10,7 @@ The goal is to learn from description-color pairs to describe colors, and to cre
  - _GPU not needed_
 
 ## Training a model
-Run python main.py --save will run a model with parameters and save the models
+Run `python main.py --save` will run a model with parameters and save the models
 
 
 ## Testing : visualization
