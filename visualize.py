@@ -9,7 +9,7 @@ import argparse
 parser = argparse.ArgumentParser()
 parser.add_argument("-r","--random" ,help="random colors" ,action="store_true")
 parser.add_argument("-c","--coef",nargs='?',help="coefficient for sampling :"
-                                                 "set to zero for zero noise",const=0.1,type=float)
+                                                 "set to zero for zero noise",default=0.1,type=float)
 
 args = parser.parse_args()
 print('Random colors:' + str(args.random))
