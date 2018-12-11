@@ -1,29 +1,30 @@
-# Rutgers University Grounded Semantics Toolkit (RUGSTK), Public Version 1.0
+# Grounded language learning of visual-lexical color descriptions
+The goal is to learn from description-color pairs to describe colors, and to create colors from description. `python main.py --save`
 
-Preface: scipy stack is assumed to be installed (matplotlib,scipy,numpy,etc)
+## What's needed
+ - python 3.6
+ - pytorch 0.4
+ - torchtext 0.4
+ - skimage 0.14
+ - matplotlib 3.0
+ - _GPU not needed_
 
-Currently in progress, this is the framework the grounded semantics work of McMahan,Stone, et al.
-
-As of right now, this is accompanying:
-B. McMahan and M. Stone 
-A Bayesian Model of Grounded Color Semantics
-Transactions of the Association for Computational Linguistics, 2015 
-
-It also has the work from:
-@article{meomcmahanstone:color,
-  author = "T. Meo and B. McMahan and M. Stone",
-  title = "Generating and Resolving Vague Color Reference",
-  year = 2014,
-  journal = "Proceedings of the 18th Workshop Semantics and Pragmatics of Dialogue (SemDial)"
-}
-
-Proper bibtex to be inserted. 
-
-To use: put the folder where the parent folder is on the python sys path. (check with 'import sys; print sys.path' 
-Or, add it to the sys path ('import sys; sys.path.append(some_directory)')
-
-Note: things get weird when rugstk_v1 (or whatever you name it to) is on the sys path itself. It needs to be a child directory of something on the path. 
-
-Example.py provides example functionality of this package. 
+## Training a model
+Run python main.py --save will run a model with parameters and save the models
 
 
+## Testing : visualization
+Run visualize.py (loads what has been saved as model).
+This will display a grid of modifiers (y-axis) and colors (x-axis).
+
+ - you can tune the noise coefficient of the sampling with `-c` argument (default: `0.1`)
+ - you can get random mix of colors and modifiers with `-r` (default: `False`)
+
+## Testing : generating color descriptions
+
+Run test.py (loads what has been saved as model).
+Select a set of RGB values and outputs a description and then compares it with the corresponding description of the test set.
+The accuracy is displayed (exact match).
+
+ - you can tune the noise coefficient of the sampling with `-c` argument (default: `0.1)`
+ - you can chose the number of sequences generated for each RGB value with `-n` (default :`1`)
