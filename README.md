@@ -14,7 +14,7 @@ Run `python main.py --save` will run a model with parameters and save it.
 
 
 ## Testing : visualization
-Run visualize.py (loads what has been saved as model).
+Run `visualize.py` (loads what has been saved as model).
 This will display a grid of modifiers (y-axis) and colors (x-axis).
 
  - you can tune the noise coefficient of the sampling with `-c` argument (default: `0.1`)
@@ -22,7 +22,7 @@ This will display a grid of modifiers (y-axis) and colors (x-axis).
 
 ## Testing : generating color descriptions
 
-Run test.py (loads what has been saved as model).
+Run `test.py` (loads what has been saved as model).
 Select a set of RGB values and outputs a description and then compares it with the corresponding description of the test set.
 The accuracy is displayed (exact match).
 
