@@ -17,7 +17,7 @@ def tensorFromDescription(vocabulary, description):
     if diff > 0 : indices.extend([PAD_token for _ in range(diff)])
     return torch.tensor(indices, dtype=torch.long, device=device).view(-1, 1)
 
-def sample_z(mu,sigma,coef=1):
+def sample_z(mu,sigma,coef=0.5):
     #reparam trick multivariate
     #coef can be tuned down for less noisy samples
     return (mu + coef*torch.mm(sigma,torch.randn((3,1))) ).squeeze()
