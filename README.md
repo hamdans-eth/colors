@@ -7,7 +7,7 @@ The goal is to learn from description-color pairs to describe colors, and to cre
  - torchtext 0.4
  - skimage 0.14
  - matplotlib 3.0
- - _GPU not needed_
+ - _GPU not needed_ (short sequences of word and low dimension latent space seem to not benefit from GPU parallelization)
 
 ## Training a model
 Run `python main.py --save` will run a model with parameters and save it.
