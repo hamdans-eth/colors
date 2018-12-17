@@ -29,7 +29,8 @@ The accuracy is displayed (exact match).
  - you can tune the noise coefficient of the sampling with `-c` argument (default: `0.1)`
  - you can chose the number of sequences generated for each RGB value with `-n` (default :`1`)
 
-## Utility scripts
+## Other files
 
  - `get_data.py` provides function to load the needed data
  - `utils.py` furnishes helpful functions 
+ - `model.py` describes the modified autoencoder architecture
