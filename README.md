@@ -34,3 +34,6 @@ The accuracy is displayed (exact match).
  - `get_data.py` provides function to load the needed data
  - `utils.py` furnishes helpful functions 
  - `model.py` describes the modified autoencoder architecture
+
+## source
+the dataset used and the utility functions used to load it are from http://mcmahan.io/lux/
