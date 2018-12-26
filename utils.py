@@ -9,7 +9,7 @@ SOS_token = 0
 EOS_token = 1
 PAD_token = 2
 
-
+#m = torch.distribution.Normal(torch.tensor([0.0]), torch.tensor([1.0]))
 def tensorFromDescription(vocabulary, description):
     indices = [vocabulary.word2index[word] for word in description.split(' ')]
     indices.append(EOS_token)
@@ -20,6 +20,8 @@ def tensorFromDescription(vocabulary, description):
 def sample_z(mu,sigma,coef=0.5):
     #reparam trick multivariate
     #coef can be tuned down for less noisy samples
+    #random_vector = torch.tensor([m.sample() for _ in range(3)])
+    #return (mu + coef*torch.mm(sigma,random_vector) ).squeeze()
     return (mu + coef*torch.mm(sigma,torch.randn((3,1))) ).squeeze()
 
 def tensorsFromPair(pair,vocabulary):
@@ -72,9 +74,11 @@ def get_priors_(RGB):
     return means,variances
 
 def sample_RGB(mu, var,coef):
-    eps = torch.randn((3,1), requires_grad=True)
+    #eps = torch.tensor([m.sample() for _ in range(3)])
+    eps = torch.randn((3,1))
     sample = (mu.t() + coef * torch.mm(var,eps)) #* mm_triangular(eps,var))
     while (any(sample[0] < 0) or any(sample[0] > 1)):
-        eps = torch.randn((3, 1), requires_grad=True)
+        #eps = torch.tensor([m.sample() for _ in range(3)])
+        eps = torch.randn((3, 1))
         sample = (mu.t() +  coef *  torch.mm(var,eps)) #mm_triangular(eps, var))
     return sample
