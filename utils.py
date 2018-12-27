@@ -9,7 +9,7 @@ SOS_token = 0
 EOS_token = 1
 PAD_token = 2
 
-#m = torch.distribution.Normal(torch.tensor([0.0]), torch.tensor([1.0]))
+#m = torch.distributions.Normal(torch.tensor([0.0]), torch.tensor([1.0]))
 def tensorFromDescription(vocabulary, description):
     indices = [vocabulary.word2index[word] for word in description.split(' ')]
     indices.append(EOS_token)
