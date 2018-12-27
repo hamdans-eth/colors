@@ -10,7 +10,7 @@ The goal is to learn from description-color pairs to describe colors, and to cre
  - _GPU not needed_ (short sequences of word and low dimension latent space seem to not benefit from GPU parallelization)
 
 ## Training a model
-Run `python main.py --save` will run a model with parameters and save it.
+Run `main.py --save` will run a model with parameters and save it.
 
 
 ## Testing : visualization
