@@ -74,11 +74,11 @@ def get_priors_(RGB):
     return means,variances
 
 def sample_RGB(mu, var,coef):
-    #eps = torch.tensor([m.sample() for _ in range(3)])
+    #eps = torch.tensor([[m.sample()] for _ in range(3)])
     eps = torch.randn((3,1))
     sample = (mu.t() + coef * torch.mm(var,eps)) #* mm_triangular(eps,var))
     while (any(sample[0] < 0) or any(sample[0] > 1)):
-        #eps = torch.tensor([m.sample() for _ in range(3)])
+        #eps = torch.tensor([[m.sample()] for _ in range(3)])
         eps = torch.randn((3, 1))
         sample = (mu.t() +  coef *  torch.mm(var,eps)) #mm_triangular(eps, var))
     return sample
