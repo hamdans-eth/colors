@@ -32,7 +32,9 @@ The accuracy is displayed (exact match).
  - you can tune the noise coefficient of the sampling with `-c` argument (default: `0.1)`
  - you can chose the number of sequences generated for each RGB value with `-n` (default :`1`)
  
- ![Example of description predictions of the color _orange red_](https://image.noelshack.com/fichiers/2019/15/1/1554716458-capture-d-ecran-2019-04-08-a-11-40-47.png)
+ Example from description predictions randomly sampled from the color _orange red_ distribution in the RGB space.
+ <img src="https://image.noelshack.com/fichiers/2019/15/1/1554716761-capture-d-ecran-2019-04-08-a-11-40-47.png" alt="Decoding"/>
+
 
  
 
