@@ -1,5 +1,8 @@
 # Grounded language learning of visual-lexical color descriptions
-The goal is to learn from description-color pairs to describe colors, and to create colors from description. 
+The goal is to learn from description-color pairs to describe colors, and to create colors from descriptions. A gaussian mixture is learnt in the latent RGB space instead of the centered normal gaussian of the VAE (Kingma et al. 2013). 
+
+<img src="https://www.noelshack.com/2019-15-1-1554715859-12331.png " alt="The encoder part"/>
+
 
 ## What's needed
  - python 3.6
@@ -28,6 +31,10 @@ The accuracy is displayed (exact match).
 
  - you can tune the noise coefficient of the sampling with `-c` argument (default: `0.1)`
  - you can chose the number of sequences generated for each RGB value with `-n` (default :`1`)
+ 
+ ![Example of description predictions of the color _orange red_](https://www.noelshack.com/2019-15-1-1554715865-capture-d-ecran-2019-04-08-a-11-25-47.png)
+
+ 
 
 ## Other files
 
@@ -35,5 +42,5 @@ The accuracy is displayed (exact match).
  - `utils.py` furnishes helpful functions 
  - `model.py` describes the modified autoencoder architecture
 
-## source
+## Source
 the dataset used and the utility functions used to load it are from http://mcmahan.io/lux/
