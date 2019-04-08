@@ -34,7 +34,7 @@ The accuracy is displayed (exact match).
  - you can chose the number of sequences generated for each RGB value with `-n` (default :`1`)
  
  <img src="https://image.noelshack.com/fichiers/2019/15/1/1554717389-capture-d-ecran-2019-04-08-a-11-55-34.png" alt="Decoding" width="500"/>
-Example from description predictions randomly sampled from the _orange red_ color distribution in the RGB space.
+Comparison between deterministic and stochastic auto-encoder description predictions randomly sampled from the orange red color distribution in the RGB space.
 
 
  
