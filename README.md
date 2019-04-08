@@ -23,7 +23,7 @@ This will display a grid of modifiers (y-axis) and colors (x-axis).
  - you can tune the noise coefficient of the sampling with `-c` argument (default: `0.1`)
  - you can get random mix of colors and modifiers with `-r` (default: `False`)
 
-<img src="https://image.noelshack.com/fichiers/2019/15/1/1554717154-capture-d-ecran-2019-04-08-a-11-50-55.png "alt="Decoding"/>
+<img src="https://image.noelshack.com/fichiers/2019/15/1/1554717154-capture-d-ecran-2019-04-08-a-11-50-55.png" alt="Decoding"/>
 Example of colors generated from random mix of adjectives and colors
 ## Testing : generating color descriptions
 
