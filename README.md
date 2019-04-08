@@ -1,7 +1,6 @@
 # Grounded language learning of visual-lexical color descriptions
 The goal is to learn from description-color pairs to describe colors, and to create colors from descriptions. A gaussian mixture is learnt in the latent RGB space instead of the centered normal gaussian of the VAE (Kingma et al. 2013). 
-
-<img src="https://image.noelshack.com/fichiers/2019/15/1/1554717389-capture-d-ecran-2019-04-08-a-11-55-52.png" alt="The encoder part"/>
+<img src="https://image.noelshack.com/fichiers/2019/15/1/1554717389-capture-d-ecran-2019-04-08-a-11-55-52.png" alt="The encoder part" width="500" class="center"/>
 
 
 ## What's needed
@@ -23,7 +22,7 @@ This will display a grid of modifiers (y-axis) and colors (x-axis).
  - you can tune the noise coefficient of the sampling with `-c` argument (default: `0.1`)
  - you can get random mix of colors and modifiers with `-r` (default: `False`)
 
-<img src="https://image.noelshack.com/fichiers/2019/15/1/1554717389-capture-d-ecran-2019-04-08-a-11-55-04.png" alt="Decoding"/>
+<img src="https://image.noelshack.com/fichiers/2019/15/1/1554717389-capture-d-ecran-2019-04-08-a-11-55-04.png" alt="Decoding" width="500"/>
 Example of colors generated from random mix of adjectives and colors
 ## Testing : generating color descriptions
 
@@ -34,7 +33,7 @@ The accuracy is displayed (exact match).
  - you can tune the noise coefficient of the sampling with `-c` argument (default: `0.1)`
  - you can chose the number of sequences generated for each RGB value with `-n` (default :`1`)
  
- <img src="https://image.noelshack.com/fichiers/2019/15/1/1554717389-capture-d-ecran-2019-04-08-a-11-55-34.png" alt="Decoding"/>
+ <img src="https://image.noelshack.com/fichiers/2019/15/1/1554717389-capture-d-ecran-2019-04-08-a-11-55-34.png" alt="Decoding" width="500"/>
 Example from description predictions randomly sampled from the color _orange red_ distribution in the RGB space.
 
 
