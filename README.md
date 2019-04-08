@@ -24,8 +24,8 @@ This will display a grid of modifiers (y-axis) and colors (x-axis).
 
 <img src="https://image.noelshack.com/fichiers/2019/15/1/1554717389-capture-d-ecran-2019-04-08-a-11-55-04.png" alt="Decoding" width="500"/>
 Example of colors generated from random mix of adjectives and colors
-## Testing : generating color descriptions
 
+## Testing : generating color descriptions
 Run `test.py` (loads what has been saved as model).
 Select a set of RGB values and outputs a description and then compares it with the corresponding description of the test set.
 The accuracy is displayed (exact match).
